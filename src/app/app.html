@@ -1,7 +1,7 @@
 <div class="min-h-screen bg-stone-50 text-slate-900">
   <header class="sticky top-0 z-10 border-b border-stone-200 bg-white/95 backdrop-blur">
     <nav class="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 sm:px-8" aria-label="Navegación principal">
-      <a href="#inicio" class="flex items-center gap-3 font-bold tracking-tight" id="inicio">
+      <a routerLink="/" class="flex items-center gap-3 font-bold tracking-tight" id="inicio">
         <span class="grid size-10 place-items-center rounded-xl bg-teal-700 text-lg text-white" aria-hidden="true">V</span>
         <span class="text-xl">Vívelo <span class="text-teal-700">Ecuador</span></span>
       </a>
@@ -21,13 +21,44 @@
   </header>
 
   <app-toast-container />
+  <router-outlet />
 
-  @if (vistaActual() === 'catalogo') {
+  @if (rutaResultados()) {
+  } @else if (vistaActual() === 'catalogo') {
   <main class="mx-auto max-w-7xl px-5 py-12 sm:px-8 sm:py-16" id="catalogo">
-    <section class="mb-10 max-w-2xl">
-      <p class="mb-3 text-sm font-bold uppercase tracking-[0.2em] text-teal-700">Momentos que se quedan contigo</p>
-      <h1 class="text-4xl font-bold tracking-tight sm:text-5xl">Encuentra tu próxima aventura</h1>
-      <p class="mt-4 text-lg leading-7 text-slate-600">Explora lugares únicos, actividades y tours para vivir Ecuador a tu manera.</p>
+    <section class="relative mb-12 overflow-visible rounded-[2rem] bg-slate-950 bg-cover bg-center shadow-xl" style="background-image: url('https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=2000&q=85')">
+      <div class="absolute inset-0 rounded-[2rem] bg-gradient-to-r from-slate-950/85 via-slate-950/55 to-slate-950/20"></div>
+      <div class="relative px-6 py-10 sm:px-10 sm:py-14 lg:px-14 lg:py-16">
+        <p class="mb-3 text-xs font-bold uppercase tracking-[0.22em] text-teal-200">Tu próxima historia empieza aquí</p>
+        <h1 class="max-w-3xl text-4xl font-black tracking-tight text-white sm:text-5xl lg:text-6xl">Encuentra tu próxima aventura en Ecuador</h1>
+        <p class="mt-4 max-w-2xl text-base leading-7 text-white/85 sm:text-lg">Explora experiencias seleccionadas, compara opciones y reserva tu próximo destino.</p>
+        <div class="mt-8 grid gap-3 rounded-2xl border-4 border-emerald-600 bg-white p-3 shadow-2xl md:grid-cols-[minmax(0,1fr)_250px_auto] md:items-center">
+          <div class="relative min-w-0">
+            <label for="busqueda-hero" class="mb-1 block px-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">Destino / &#191;Ad&#243;nde vas?</label>
+            <div class="flex items-center gap-3 px-2 pb-1">
+              <svg class="size-5 shrink-0 text-teal-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4 4"/></svg>
+              <input id="busqueda-hero" type="search" [value]="terminoBusqueda()" (input)="terminoBusqueda.set($any($event.target).value); sugerenciasAbiertas.set(true); registrarBusqueda()" (focus)="sugerenciasAbiertas.set(true)" (blur)="cerrarSugerencias()" (keydown.enter)="buscarExperiencias()" placeholder="Ciudad, provincia o atraccion" autocomplete="off" class="w-full border-0 p-0 text-sm text-slate-900 outline-none placeholder:text-slate-600 focus:ring-0">
+            </div>
+            @if (sugerenciasAbiertas() && sugerenciasBusqueda().length > 0) {
+              <div class="absolute left-0 right-0 top-full z-30 mt-3 overflow-hidden rounded-2xl border border-stone-200 bg-white py-2 text-slate-900 shadow-2xl" role="listbox" aria-label="Sugerencias de búsqueda">
+                @for (suggestion of sugerenciasBusqueda(); track suggestion.id) {
+                  <button type="button" (mousedown)="$event.preventDefault()" (click)="seleccionarSugerencia(suggestion)" class="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-teal-50" role="option">
+                    <span class="grid size-9 shrink-0 place-items-center rounded-lg bg-teal-50 text-teal-700"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></svg></span>
+                    <span class="min-w-0"><span class="block truncate text-sm font-semibold">{{ nombreDe(suggestion) }}</span><span class="block truncate text-xs text-slate-500">{{ suggestion.ciudad || 'Ecuador' }}</span></span>
+                  </button>
+                }
+              </div>
+            }
+          </div>
+          <label class="border-t border-stone-200 px-2 pt-2 md:border-l md:border-t-0 md:pl-4 md:pt-0">
+            <span class="mb-1 block text-[11px] font-bold uppercase tracking-wide text-slate-500">Fechas / Elegir las fechas</span>
+            <input type="date" [min]="fechaMinima" [value]="fechaBusqueda()" (change)="fechaBusqueda.set($any($event.target).value)" aria-label="Elegir fecha de viaje" class="w-full border-0 bg-white p-0 text-sm font-semibold text-slate-800 outline-none focus:ring-0">
+          </label>
+          <button type="button" (click)="buscarExperiencias()" [disabled]="buscandoDisponibilidad()" [attr.aria-busy]="buscandoDisponibilidad()" class="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#0057b8] px-6 text-sm font-bold text-white shadow-sm transition hover:bg-[#004a9b] focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:ring-offset-2 disabled:cursor-wait disabled:opacity-70">
+            @if (buscandoDisponibilidad()) { <svg class="size-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 8h4z"/></svg>Buscando... } @else { <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4 4"/></svg>Buscar }
+          </button>
+        </div>
+      </div>
     </section>
 
     @if (cargando()) {
@@ -50,104 +81,29 @@
         <p class="mt-2 text-slate-600">Vuelve pronto para descubrir nuevas experiencias.</p>
       </section>
     } @else {
-      <section class="mb-10" aria-labelledby="regiones-titulo">
-        <div class="mb-5 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-          <div class="max-w-3xl">
-            <p class="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-teal-700">Ecuador de norte a sur</p>
-            <h2 id="regiones-titulo" class="text-2xl font-bold tracking-tight sm:text-3xl">Explora más destinos: Encuentra actividades en diferentes lugares del Ecuador</h2>
-            <p class="mt-2 text-sm text-slate-600">Elige una región y descubre experiencias pensadas para cada paisaje.</p>
-          </div>
-          <button type="button" (click)="seleccionarRegion('TODAS')" [attr.aria-pressed]="regionSeleccionada() === 'TODAS'" [class.bg-teal-700]="regionSeleccionada() === 'TODAS'" [class.text-white]="regionSeleccionada() === 'TODAS'" [class.bg-white]="regionSeleccionada() !== 'TODAS'" [class.text-teal-800]="regionSeleccionada() !== 'TODAS'" class="inline-flex shrink-0 items-center justify-center gap-2 rounded-full border border-teal-700 px-5 py-2.5 text-sm font-bold shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-            <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg>
-            Todas las regiones
-          </button>
+      <section class="mb-10" aria-labelledby="provincias-titulo">
+        <div class="mb-5">
+          <h2 id="provincias-titulo" class="text-2xl font-bold tracking-tight sm:text-3xl">Explora destinos por provincia</h2>
+          <p class="mt-2 text-sm text-slate-600">Encuentra actividades en las provincias del Ecuador</p>
         </div>
-
-        <div class="flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth pb-3 md:grid md:grid-cols-4 md:overflow-visible md:pb-0" role="group" aria-label="Filtrar experiencias por región">
-          @for (region of regionesConConteo(); track region.id) {
-            <button type="button" (click)="seleccionarRegion(region.id)" [attr.aria-pressed]="regionSeleccionada() === region.id" [attr.aria-label]="region.name + ': ' + region.count + ' experiencias'" [style.background-image]="'linear-gradient(180deg, rgba(15, 23, 42, .12) 0%, rgba(15, 23, 42, .82) 100%), url(' + region.image + ')'" class="group relative flex h-52 w-[min(82vw,320px)] shrink-0 snap-start flex-col justify-between overflow-hidden rounded-2xl border border-white/20 bg-cover bg-center p-5 text-left text-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-teal-300 md:w-auto" [class.ring-4]="regionSeleccionada() === region.id" [class.ring-teal-500]="regionSeleccionada() === region.id">
-              <span class="absolute inset-0 bg-teal-900/10 transition duration-300 group-hover:bg-transparent" aria-hidden="true"></span>
-              <span class="relative flex w-full items-start justify-end"><span class="rounded-full bg-black/30 px-3 py-1 text-xs font-bold backdrop-blur-sm">{{ region.count }} {{ region.count === 1 ? 'actividad' : 'actividades' }}</span></span>
-              <span class="relative"><span class="block text-xl font-bold tracking-tight">{{ region.name }}</span><span class="mt-1 block text-xs leading-5 text-white/85">{{ region.description }}</span></span>
+        <div class="grid grid-cols-2 gap-4 md:grid-cols-4" role="group" aria-label="Explorar actividades por provincia">
+          @for (province of provinciasVisibles(); track province.name) {
+            <button type="button" (click)="seleccionarProvincia(province)" [attr.aria-pressed]="provinciaSeleccionada() === province.name" [style.background-image]="'linear-gradient(to top, rgb(0 0 0 / .8), transparent 72%), url(' + province.image + ')'" class="group relative flex h-48 cursor-pointer flex-col justify-end overflow-hidden rounded-2xl bg-cover bg-center p-4 text-left text-white transition-transform duration-200 hover:scale-[1.02] focus:outline-none focus:ring-4 focus:ring-blue-200" [class.ring-4]="provinciaSeleccionada() === province.name" [class.ring-blue-500]="provinciaSeleccionada() === province.name">
+              <span class="text-lg font-bold">{{ province.name }}</span>
+              <span class="mt-1 text-sm text-white/90">{{ province.count }} {{ province.count === 1 ? 'actividad' : 'actividades' }}</span>
             </button>
           }
         </div>
       </section>
 
-      <section class="mb-8 rounded-2xl border border-stone-200 bg-white p-5 shadow-sm sm:p-6" aria-label="Buscar y filtrar atracciones">
-        <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto_auto] lg:items-end">
-          <label class="block">
-            <span class="mb-2 block text-sm font-semibold text-slate-700">Buscar experiencias</span>
-            <span class="flex items-center gap-3 rounded-xl border border-stone-300 px-4 py-3 focus-within:border-teal-700 focus-within:ring-2 focus-within:ring-teal-100">
-              <svg class="size-5 shrink-0 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4 4"/></svg>
-              <input type="search" [value]="terminoBusqueda()" (input)="terminoBusqueda.set($any($event.target).value); registrarBusqueda()" placeholder="Nombre o descripción..." class="w-full border-0 bg-transparent p-0 text-sm outline-none placeholder:text-slate-400 focus:ring-0" aria-label="Buscar por nombre o descripción">
-            </span>
-          </label>
-          <div>
-            <span class="mb-2 block text-sm font-semibold text-slate-700">Tipo de experiencia</span>
-            <div class="flex flex-wrap gap-2" role="group" aria-label="Filtrar por tipo de experiencia">
-              @for (tipo of ['TODOS', 'SINGLE_TICKET', 'GUIDED_TOUR', 'PACKAGE']; track tipo) {
-                <button type="button" (click)="tipoSeleccionado.set(tipo); registrarFiltro()" [attr.aria-pressed]="tipoSeleccionado() === tipo" [class.bg-teal-700]="tipoSeleccionado() === tipo" [class.text-white]="tipoSeleccionado() === tipo" [class.bg-stone-100]="tipoSeleccionado() !== tipo" [class.text-slate-700]="tipoSeleccionado() !== tipo" class="rounded-full px-3 py-2 text-xs font-semibold transition hover:bg-teal-100 sm:text-sm">{{ tipo === 'TODOS' ? tipo : tipo.replace('_', ' ') }}</button>
-              }
-            </div>
-          </div>
-          <label class="block">
-            <span class="mb-2 block text-sm font-semibold text-slate-700">Ordenar por precio</span>
-            <select [value]="ordenPrecio()" (change)="ordenPrecio.set($any($event.target).value); registrarFiltro()" class="w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none focus:border-teal-700 focus:ring-2 focus:ring-teal-100">
-              <option value="ninguno">Orden predeterminado</option>
-              <option value="asc">Menor a mayor</option>
-              <option value="desc">Mayor a menor</option>
-            </select>
-          </label>
-        </div>
-        <p class="mt-4 text-sm text-slate-500" aria-live="polite">{{ atraccionesFiltradas().length }} experiencias encontradas</p>
-      </section>
 
-      @if (atraccionesFiltradas().length === 0) {
-        <section class="rounded-2xl border border-stone-200 bg-white px-6 py-14 text-center" aria-live="polite">
-          <span class="mx-auto grid size-14 place-items-center rounded-full bg-teal-50 text-teal-700" aria-hidden="true">
-            <svg class="size-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4 4M8 11h5"/></svg>
-          </span>
-          @if (regionSeleccionada() !== 'TODAS' && regionesConConteo().find((region) => region.id === regionSeleccionada())?.count === 0) {
-            <h2 class="mt-4 text-lg font-bold">Aún no hay actividades registradas en {{ regionSeleccionada() === 'GALAPAGOS' ? 'Islas Galápagos' : regionSeleccionada() === 'ORIENTE' ? 'Oriente / Amazonía' : regionSeleccionada() === 'COSTA' ? 'la Costa' : 'la Sierra' }}</h2>
-            <p class="mt-2 text-sm text-slate-600">Estamos preparando nuevas experiencias en esta región. Mientras tanto, explora todos los destinos.</p>
-            <button type="button" (click)="seleccionarRegion('TODAS')" class="mt-5 rounded-xl bg-teal-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-teal-800">Ver todas las regiones</button>
-          } @else {
-            <h2 class="mt-4 text-lg font-bold">No se encontraron atracciones con los criterios seleccionados</h2>
-            <p class="mt-2 text-sm text-slate-600">Prueba con otra búsqueda o cambia los filtros.</p>
-          }
-        </section>
-      } @else {
-      <section class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" aria-label="Catálogo de atracciones">
-        @for (atraccion of atraccionesFiltradas(); track atraccion.id) {
-          <article class="group overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-lg">
-            <div class="relative h-52 overflow-hidden bg-stone-200">
-              <img [src]="imagenDe(atraccion)" [alt]="nombreDe(atraccion)" class="h-full w-full object-cover transition duration-300 group-hover:scale-105" loading="lazy">
-              <span class="absolute left-4 top-4 rounded-full bg-white/95 px-3 py-1 text-xs font-bold capitalize text-teal-800 shadow-sm">{{ atraccion.product_type || 'Experiencia' }}</span>
-            </div>
-            <div class="flex min-h-60 flex-col p-5">
-              <h2 class="text-lg font-bold leading-6">{{ nombreDe(atraccion) }}</h2>
-              <p class="mt-2 line-clamp-3 text-sm leading-6 text-slate-600">{{ descripcionDe(atraccion) }}</p>
-              <div class="mt-4 flex items-center gap-2 text-sm text-slate-600">
-                <svg class="size-4 text-teal-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-                <span>{{ duracionDe(atraccion) }}</span>
-              </div>
-              <div class="mt-auto flex items-end justify-between gap-3 pt-5">
-                <div><p class="text-xs text-slate-500">Desde</p><p class="text-xl font-bold text-slate-900">{{ precioDe(atraccion) }}</p></div>
-                <button type="button" (click)="reservar(atraccion)" class="rounded-xl bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-teal-800 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2">Reservar</button>
-              </div>
-            </div>
-          </article>
-        }
-      </section>
-      }
     }
   </main>
   } @else {
     <main class="mx-auto min-h-[70vh] max-w-7xl px-5 py-12 sm:px-8 sm:py-16" id="mis-reservas">
       <section class="mb-10 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
         <div><p class="mb-3 text-sm font-bold uppercase tracking-[0.2em] text-teal-700">Tu espacio personal</p><h1 class="text-4xl font-bold tracking-tight sm:text-5xl">Mis Reservas</h1><p class="mt-3 text-lg text-slate-600">Consulta tus experiencias y gestiona tus próximos planes.</p></div>
-        <button type="button" (click)="cargarMisReservas()" class="rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-stone-50">Actualizar lista</button>
+        <button type="button" (click)="cargarMisReservas()" [disabled]="cargandoReservas()" [attr.aria-busy]="cargandoReservas()" class="inline-flex items-center gap-2 rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-stone-50 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:ring-offset-2 disabled:cursor-wait disabled:opacity-70">@if (cargandoReservas()) { <svg class="size-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 8h4z"/></svg>Actualizando... } @else { Actualizar lista }</button>
       </section>
       @if (cargandoReservas()) {
         <section class="space-y-4" aria-label="Cargando reservas" aria-live="polite">
@@ -160,22 +116,42 @@
       } @else {
         <section class="space-y-4" aria-label="Listado de mis reservas">
           @for (reserva of misReservas(); track reserva.reservation_id) {
-            <article class="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm transition hover:shadow-md sm:flex">
-              <img [src]="reserva.attraction?.image_url || 'https://images.unsplash.com/photo-1519501025264-65ba15a82390?auto=format&fit=crop&w=900&q=80'" [alt]="reserva.attraction?.name || 'Atracción'" class="h-48 w-full object-cover sm:h-auto sm:w-56">
-              <div class="flex flex-1 flex-col justify-between gap-5 p-5 sm:flex-row sm:items-center sm:p-6"><div><div class="flex flex-wrap items-center gap-3"><h2 class="text-xl font-bold">{{ reserva.attraction?.name || 'Atracción reservada' }}</h2><span [class.bg-emerald-100]="reserva.status === 'CONFIRMED'" [class.text-emerald-800]="reserva.status === 'CONFIRMED'" [class.bg-amber-100]="reserva.status === 'PENDING'" [class.text-amber-800]="reserva.status === 'PENDING'" [class.bg-red-100]="reserva.status === 'CANCELLED'" [class.text-red-800]="reserva.status === 'CANCELLED'" class="rounded-full px-3 py-1 text-xs font-bold">{{ reserva.status === 'CONFIRMED' ? 'Confirmada' : reserva.status === 'CANCELLED' ? 'Cancelada' : 'Pendiente' }}</span></div><p class="mt-3 text-sm text-slate-600">Fecha: <span class="font-semibold text-slate-800">{{ fechaReserva(reserva.date) }}{{ reserva.time ? ' · ' + reserva.time : '' }}</span></p><p class="mt-1 text-sm text-slate-600">{{ reserva.ticket_count }} {{ reserva.ticket_count === 1 ? 'persona' : 'personas' }}</p></div><div class="flex items-center justify-between gap-5 border-t border-stone-100 pt-4 sm:flex-col sm:items-end sm:border-0 sm:pt-0"><div class="sm:text-right"><p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Total abonado</p><p class="mt-1 text-xl font-bold text-teal-800">{{ totalReservaDe(reserva) }}</p></div>@if (reserva.status !== 'CANCELLED') { <button type="button" (click)="reservaPorCancelar.set(reserva)" class="rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-700 transition hover:bg-red-50">Cancelar reserva</button> }</div></div>
-            </article>
+              <article class="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm transition-shadow hover:shadow-md sm:flex">
+                <img [src]="reserva.attraction?.image_url || 'https://images.unsplash.com/photo-1519501025264-65ba15a82390?auto=format&fit=crop&w=900&q=80'" [alt]="reserva.attraction?.name || 'Atraccion'" class="h-48 w-full object-cover sm:h-auto sm:w-56">
+                <div class="flex min-w-0 flex-1 flex-col justify-between gap-5 p-5 sm:flex-row sm:items-center sm:p-6">
+                  <div class="min-w-0">
+                    <div class="flex flex-wrap items-center gap-3"><h2 class="text-xl font-bold">{{ reserva.attraction?.name || 'Atraccion reservada' }}</h2><span [class.bg-emerald-100]="reserva.status === 'CONFIRMED'" [class.text-emerald-800]="reserva.status === 'CONFIRMED'" [class.bg-amber-100]="reserva.status === 'PENDING'" [class.text-amber-800]="reserva.status === 'PENDING'" [class.bg-red-100]="reserva.status === 'CANCELLED'" [class.text-red-800]="reserva.status === 'CANCELLED'" class="rounded-full px-3 py-1 text-xs font-bold">{{ reserva.status === 'CONFIRMED' ? 'Confirmada' : reserva.status === 'CANCELLED' ? 'Cancelada' : 'Pendiente' }}</span></div>
+                    <div class="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+                      <div class="flex flex-wrap items-center justify-between gap-3"><div><p class="text-xs font-bold uppercase tracking-wide text-emerald-900">C&#243;digo de reserva</p><p class="mt-1 break-all font-mono text-sm font-bold text-slate-900">{{ reserva.reservation_id }}</p></div><button type="button" (click)="copiarCodigo(reserva.reservation_id)" [attr.aria-live]="'polite'" [attr.aria-label]="codigoCopiado() === reserva.reservation_id ? 'Código copiado' : 'Copiar código de reserva'" class="inline-flex items-center gap-2 rounded-lg border border-emerald-800 px-3 py-2 text-sm font-semibold text-emerald-900 transition hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:ring-offset-2">{{ codigoCopiado() === reserva.reservation_id ? 'Copiado' : 'Copiar código' }}</button></div>
+                    </div>
+                    <dl class="mt-4 grid grid-cols-2 gap-x-5 gap-y-3 text-sm"><div><dt class="text-slate-600">Fecha</dt><dd class="font-semibold text-slate-900">{{ fechaReserva(reserva.date) }}{{ reserva.time ? ' a las ' + reserva.time : '' }}</dd></div><div><dt class="text-slate-600">Tickets</dt><dd class="font-semibold text-slate-900">{{ reserva.ticket_count }} {{ reserva.ticket_count === 1 ? 'persona' : 'personas' }}</dd></div><div><dt class="text-slate-600">Paquete</dt><dd class="font-semibold text-slate-900">{{ tipoPaqueteLabel(reserva.product_type) }}</dd></div><div><dt class="text-slate-600">Total pagado</dt><dd class="font-bold text-teal-800">{{ totalReservaDe(reserva) }}</dd></div></dl>
+                  </div>
+                  <div class="flex flex-wrap items-center gap-2 border-t border-stone-100 pt-4 sm:border-0 sm:pt-0">
+                    @if (reserva.status === 'CONFIRMED') { <button type="button" (click)="mostrarQrReserva(reserva)" class="inline-flex items-center gap-2 rounded-xl bg-emerald-800 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-900 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:ring-offset-2"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3h-3zm4 4h3v3h-3zm-4 2v1"/></svg>Ver código QR</button> }
+                    @if (reserva.status !== 'CANCELLED') { <button type="button" (click)="reservaPorCancelar.set(reserva)" class="rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-700 transition hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2">Cancelar reserva</button> }
+                  </div>
+                </div>
+              </article>
           }
         </section>
       }
     </main>
   }
   <footer class="flex flex-col items-center justify-center gap-2 border-t border-stone-200 bg-white py-6 text-center text-sm text-slate-500 sm:flex-row sm:gap-4">© 2026 Vívelo Ecuador · Descubre algo extraordinario @if (authService.isAdmin()) { <button type="button" (click)="abrirObservabilidad()" class="font-semibold text-teal-800 underline underline-offset-4">Observabilidad · {{ eventosObservabilidad().length }}</button> }</footer>
-  <router-outlet />
-
   @if (reservaPorCancelar(); as reserva) {
     <div class="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm" (click)="cancelandoReserva() ? null : reservaPorCancelar.set(null)"><section class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl" role="alertdialog" aria-modal="true" aria-labelledby="cancelar-reserva-titulo" (click)="$event.stopPropagation()"><div class="grid size-12 place-items-center rounded-full bg-red-50 text-red-700"><svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 8v5m0 4h.01M10.3 3.9 2.7 17a2 2 0 0 0 1.7 3h15.2a2 2 0 0 0 1.7-3l-7.6-13.1a2 2 0 0 0-3.4 0Z"/></svg></div><h2 id="cancelar-reserva-titulo" class="mt-4 text-xl font-bold">¿Cancelar esta reserva?</h2><p class="mt-2 text-sm leading-6 text-slate-600">Se cancelará tu reserva para <span class="font-semibold text-slate-900">{{ reserva.attraction?.name || 'esta experiencia' }}</span>. Esta acción no se puede deshacer.</p><div class="mt-6 flex justify-end gap-3"><button type="button" (click)="reservaPorCancelar.set(null)" [disabled]="cancelandoReserva()" class="rounded-xl border border-stone-300 px-4 py-2.5 text-sm font-semibold text-slate-700 disabled:opacity-50">Volver</button><button type="button" (click)="confirmarCancelacion()" [disabled]="cancelandoReserva()" class="rounded-xl bg-red-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-800 disabled:opacity-60">{{ cancelandoReserva() ? 'Cancelando…' : 'Sí, cancelar' }}</button></div></section></div>
   }
 
+  @if (reservaParaQr(); as reservaQr) {
+    <div class="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm" (click)="reservaParaQr.set(null)">
+      <section class="w-full max-w-sm rounded-3xl bg-white p-6 text-center shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="reserva-qr-titulo" (click)="$event.stopPropagation()">
+        <div class="flex items-start justify-between gap-3 text-left"><div><p class="text-xs font-bold uppercase tracking-wider text-emerald-800">Reserva confirmada</p><h2 id="reserva-qr-titulo" class="mt-1 text-xl font-bold">Tu código QR</h2></div><button type="button" (click)="reservaParaQr.set(null)" class="grid size-9 place-items-center rounded-full text-xl text-slate-600 hover:bg-stone-100 focus:outline-none focus:ring-2 focus:ring-emerald-700" aria-label="Cerrar código QR">×</button></div>
+        <div class="mx-auto mt-5 inline-flex rounded-2xl border border-slate-200 bg-white p-3"><img [src]="qrUrl(reservaQr.reservation_id)" [alt]="'Código QR de la reserva ' + reservaQr.reservation_id" class="size-56" loading="eager"></div>
+        <p class="mt-4 font-mono text-sm font-bold text-slate-900">{{ reservaQr.reservation_id }}</p><p class="mt-1 text-sm text-slate-600">{{ reservaQr.attraction?.name || 'Experiencia reservada' }}</p>
+        <button type="button" (click)="reservaParaQr.set(null)" class="mt-6 w-full rounded-xl bg-emerald-800 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-900 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:ring-offset-2">Listo</button>
+      </section>
+    </div>
+  }
   @if (loginModalAbierto()) {
     <div class="fixed inset-0 z-[60] flex items-center justify-center overflow-y-auto bg-slate-950/65 p-4 backdrop-blur-sm" (click)="cerrarLogin()">
       <section class="my-auto w-full max-w-md overflow-hidden rounded-2xl border border-white/20 bg-white shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="login-titulo" (click)="$event.stopPropagation()">
@@ -255,11 +231,11 @@
 
   @if (atraccionParaReservar(); as atraccion) {
     <div class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm" (click)="cerrarModal()">
-      <section class="my-auto w-full max-w-2xl overflow-hidden rounded-3xl bg-white shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="reserva-titulo" (click)="$event.stopPropagation()">
+      <section class="my-auto w-full max-w-3xl overflow-hidden rounded-3xl bg-white shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="reserva-titulo" (click)="$event.stopPropagation()">
         <div class="flex items-start justify-between border-b border-stone-200 px-6 py-5 sm:px-8">
           <div>
-            <p class="text-xs font-bold uppercase tracking-[0.18em] text-teal-700">Completa tu experiencia</p>
-            <h2 id="reserva-titulo" class="mt-1 text-2xl font-bold">Reserva tu lugar</h2>
+            <p class="text-xs font-bold uppercase tracking-[0.18em] text-teal-700">{{ reservaPaso() < 0 ? 'Ficha de la atracción' : 'Paso ' + reservaPaso() + ' de 2: ' + (reservaPaso() === 1 ? 'Tus datos' : 'Revisión y pago') }}</p>
+            <h2 id="reserva-titulo" class="mt-1 text-2xl font-bold">{{ reservaPaso() < 0 ? nombreDe(atraccion) : reservaPaso() === 0 ? 'Elige fecha y entradas' : reservaPaso() === 1 ? 'Tus datos' : 'Revisión y pago' }}</h2>
           </div>
           <button type="button" (click)="cerrarModal()" [disabled]="reservaEnviando()" class="grid size-10 place-items-center rounded-full text-2xl text-slate-500 transition hover:bg-stone-100 hover:text-slate-900 disabled:opacity-40" aria-label="Cerrar modal">×</button>
         </div>
@@ -270,68 +246,97 @@
             <h3 class="mt-4 text-lg font-bold">{{ nombreDe(atraccion) }}</h3>
             <p class="mt-2 text-sm leading-6 text-slate-600">{{ descripcionDe(atraccion) }}</p>
             <div class="mt-5 flex items-center justify-between border-t border-stone-200 pt-4 text-sm">
-              <span class="text-slate-600">Precio por persona</span>
-              <span class="font-bold text-slate-900">{{ precioDe(atraccion) }}</span>
+              <span class="text-slate-600">{{ tieneDesgloseParticipantes() ? 'Total seleccionado' : 'Precio por persona' }}</span>
+              <span class="font-bold text-slate-900">{{ tieneDesgloseParticipantes() ? totalReservaFormateado() : precioPaqueteFormateado(atraccion) }}</span>
             </div>
           </aside>
 
-          <form [formGroup]="reservaForm" (ngSubmit)="confirmarReserva()" class="space-y-4 p-6 sm:p-8">
-            <label class="block">
-              <span class="mb-1.5 block text-sm font-semibold text-slate-700">Nombre completo</span>
-              <input type="text" formControlName="customer_name" autocomplete="name" placeholder="Ej. Ana Pérez" class="w-full rounded-xl border border-stone-300 px-4 py-3 text-sm outline-none transition focus:border-teal-700 focus:ring-2 focus:ring-teal-100">
-              @if (reservaForm.controls.customer_name.touched && reservaForm.controls.customer_name.invalid) {
-                <span class="mt-1 block text-xs text-red-700">Ingresa tu nombre completo (mínimo 2 caracteres).</span>
-              }
-            </label>
+          <form [formGroup]="reservaForm" (ngSubmit)="reservaPaso() === 2 ? confirmarReserva() : continuarPasoReserva()" class="space-y-4 p-6 sm:p-8">
+            @if (reservaPaso() === -1) {
+              <p class="text-sm leading-6 text-slate-600">Revisa la opción ofrecida por el operador y selecciónala para elegir fecha, turno y cantidad de entradas.</p>
+              <article class="rounded-2xl border border-emerald-200 bg-white p-5 shadow-sm">
+                <div class="flex items-start justify-between gap-3"><div><span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-800">{{ atraccion.product_type === 'PACKAGE' ? 'Paquete' : atraccion.product_type === 'GUIDED_TOUR' ? 'Tour guiado' : 'Entrada' }}</span><h3 class="mt-3 text-lg font-bold">{{ nombrePaquete(atraccion) }} · {{ nombreDe(atraccion) }}</h3></div><p class="shrink-0 text-right"><span class="block text-xs text-slate-500">Precio individual</span><span class="text-xl font-bold text-slate-900">{{ precioPaqueteFormateado(atraccion) }}</span></p></div>
+                <p class="mt-3 text-sm leading-6 text-slate-600">{{ descripcionDe(atraccion) }}</p>
+                @if (atraccion.includes?.length) { <ul class="mt-3 space-y-1 text-sm text-slate-700">@for (item of atraccion.includes; track item) { <li class="flex gap-2"><span class="text-emerald-700">✓</span>{{ item }}</li> }</ul> }
+                <button type="button" (click)="reservaPaso.set(0)" class="mt-5 w-full rounded-xl bg-[#0057b8] px-5 py-3 text-sm font-bold text-white transition hover:bg-blue-700">{{ atraccion.product_type === 'PACKAGE' ? 'Seleccionar paquete' : 'Seleccionar esta opción' }}</button>
+              </article>
+            }
+            @if (reservaPaso() === 0) {
+            <p class="text-sm leading-6 text-slate-600">{{ descripcionDe(atraccion) }}</p>
+            <div class="flex items-center gap-2 rounded-xl bg-emerald-50 p-3 text-sm font-semibold text-emerald-800">✓ Cancelación gratis · Confirmación inmediata</div>
+            <p class="text-sm font-bold">Elige fecha y turno</p>
+            <div class="grid grid-cols-2 gap-3">
+              <label class="block"><span class="mb-1.5 block text-sm font-semibold text-slate-700">Fecha</span><input type="date" [min]="fechaMinima" formControlName="date" class="w-full rounded-xl border border-stone-300 px-3 py-3 text-sm focus:border-teal-700 focus:ring-2 focus:ring-teal-100">@if (reservaForm.controls.date.touched && reservaForm.controls.date.invalid) { <span class="mt-1 block text-xs text-red-700">Selecciona hoy o una fecha futura.</span> }</label>
+              <label class="block"><span class="mb-1.5 block text-sm font-semibold text-slate-700">Hora / turno</span><select formControlName="time" class="w-full rounded-xl border border-stone-300 bg-white px-3 py-3 text-sm focus:border-teal-700 focus:ring-2 focus:ring-teal-100"><option value="09:00">09:00</option><option value="10:00">10:00</option><option value="12:00">12:00</option><option value="14:00">14:00</option><option value="16:00">16:00</option></select></label>
+            </div>
+            <label class="block"><span class="mb-1.5 block text-sm font-semibold text-slate-700">Cantidad de entradas</span><input type="number" min="1" step="1" formControlName="ticket_count" class="w-full rounded-xl border border-stone-300 px-3 py-3 text-sm focus:border-teal-700 focus:ring-2 focus:ring-teal-100">@if (reservaForm.controls.ticket_count.touched && reservaForm.controls.ticket_count.invalid) { <span class="mt-1 block text-xs text-red-700">Ingresa un entero igual o mayor que 1.</span> }</label>
+            <div class="rounded-xl bg-teal-50 p-4"><div class="flex items-center justify-between gap-3"><span class="text-sm font-semibold text-teal-900">Total a pagar</span><span class="text-xl font-bold text-teal-900">{{ totalReservaFormateado() }}</span></div>@if (desgloseParticipantesCheckout(); as participantes) { <p class="mt-1 text-xs text-teal-800">{{ participantes }}</p> } @if (desgloseTourCheckout(); as desgloseTour) { <p class="mt-1 text-xs text-teal-800">{{ desgloseTour }}</p> } @else if (!desgloseParticipantesCheckout()) { <p class="mt-1 text-xs text-teal-800">{{ precioPaqueteFormateado(atraccion) }} × {{ reservaForm.controls.ticket_count.value || 0 }} entrada(s)</p> }</div>
+            }
+            @if (reservaPaso() === 1) {
+            <div class="grid grid-cols-2 gap-3">
+              <label class="block"><span class="mb-1.5 block text-sm font-semibold text-slate-700">Nombre</span><input type="text" maxlength="50" formControlName="first_name" (input)="filtrarLetras($event, 'first_name')" autocomplete="given-name" placeholder="Ej. Ana" class="w-full rounded-xl border border-stone-300 px-4 py-3 text-sm focus:border-teal-700 focus:ring-2 focus:ring-teal-100">@if (reservaForm.controls.first_name.touched && reservaForm.controls.first_name.invalid) { <span class="mt-1 block text-xs text-red-700">Ingresa un nombre usando solo letras y espacios.</span> }</label>
+              <label class="block"><span class="mb-1.5 block text-sm font-semibold text-slate-700">Apellido</span><input type="text" maxlength="50" formControlName="last_name" (input)="filtrarLetras($event, 'last_name')" autocomplete="family-name" placeholder="Ej. Pérez" class="w-full rounded-xl border border-stone-300 px-4 py-3 text-sm focus:border-teal-700 focus:ring-2 focus:ring-teal-100">@if (reservaForm.controls.last_name.touched && reservaForm.controls.last_name.invalid) { <span class="mt-1 block text-xs text-red-700">Ingresa un apellido usando solo letras y espacios.</span> }</label>
+            </div>
             <label class="block">
               <span class="mb-1.5 block text-sm font-semibold text-slate-700">Correo electrónico</span>
               <input type="email" formControlName="customer_email" autocomplete="email" placeholder="tu@correo.com" class="w-full rounded-xl border border-stone-300 px-4 py-3 text-sm outline-none transition focus:border-teal-700 focus:ring-2 focus:ring-teal-100">
-              @if (reservaForm.controls.customer_email.touched && reservaForm.controls.customer_email.invalid) {
-                <span class="mt-1 block text-xs text-red-700">Ingresa un correo electrónico válido.</span>
-              }
+              @if (reservaForm.controls.customer_email.touched && reservaForm.controls.customer_email.invalid) { <span class="mt-1 block text-xs text-red-700">Ingresa un correo electrónico válido.</span> }
             </label>
-            <div class="grid grid-cols-2 gap-3">
-              <label class="block">
-                <span class="mb-1.5 block text-sm font-semibold text-slate-700">Fecha</span>
-                <input type="date" [min]="fechaMinima" formControlName="date" class="w-full rounded-xl border border-stone-300 px-3 py-3 text-sm outline-none transition focus:border-teal-700 focus:ring-2 focus:ring-teal-100">
-                @if (reservaForm.controls.date.touched && reservaForm.controls.date.invalid) {
-                  <span class="mt-1 block text-xs text-red-700">Selecciona hoy o una fecha futura.</span>
-                }
-              </label>
-              <label class="block">
-                <span class="mb-1.5 block text-sm font-semibold text-slate-700">Personas</span>
-                <input type="number" min="1" step="1" formControlName="ticket_count" class="w-full rounded-xl border border-stone-300 px-3 py-3 text-sm outline-none transition focus:border-teal-700 focus:ring-2 focus:ring-teal-100">
-                @if (reservaForm.controls.ticket_count.touched && reservaForm.controls.ticket_count.invalid) {
-                  <span class="mt-1 block text-xs text-red-700">Ingresa un entero igual o mayor que 1.</span>
-                }
-              </label>
-            </div>
-
-            <div class="rounded-xl bg-teal-50 p-4">
-              <div class="flex items-center justify-between gap-3">
-                <span class="text-sm font-semibold text-teal-900">Total a pagar</span>
-                <span class="text-xl font-bold text-teal-900">{{ totalReservaFormateado() }}</span>
-              </div>
-              <p class="mt-1 text-xs text-teal-800">{{ precioDe(atraccion) }} × {{ reservaForm.controls.ticket_count.value || 0 }} persona(s)</p>
-            </div>
-
+            <label class="block"><span class="mb-1.5 block text-sm font-semibold text-slate-700">Cédula de identidad</span><input type="text" inputmode="numeric" maxlength="10" formControlName="identity_number" (input)="filtrarDigitos($event, 10, 'identity_number')" (blur)="registrarErrorValidacionCheckout('identity_number')" autocomplete="off" placeholder="10 dígitos" [class.border-red-600]="reservaForm.controls.identity_number.touched && reservaForm.controls.identity_number.invalid" [class.focus:ring-red-100]="reservaForm.controls.identity_number.touched && reservaForm.controls.identity_number.invalid" class="w-full rounded-xl border border-stone-300 px-4 py-3 text-sm focus:border-teal-700 focus:ring-2 focus:ring-teal-100">@if (reservaForm.controls.identity_number.pending) { <span class="mt-1 block text-xs text-slate-600" aria-live="polite">Validando cédula...</span> } @else if (reservaForm.controls.identity_number.touched && reservaForm.controls.identity_number.invalid) { <span class="mt-1 block text-xs text-red-700">{{ reservaForm.controls.identity_number.hasError('cedulaInvalida') ? 'Cédula de identidad no válida' : 'Ingresa una cédula de 10 dígitos.' }}</span> }</label>
+            <label class="block"><span class="mb-1.5 block text-sm font-semibold text-slate-700">Teléfono / celular</span><input type="tel" inputmode="numeric" maxlength="10" formControlName="phone" (input)="filtrarDigitos($event, 10, 'phone')" autocomplete="tel-national" placeholder="09xxxxxxxx" class="w-full rounded-xl border border-stone-300 px-4 py-3 text-sm focus:border-teal-700 focus:ring-2 focus:ring-teal-100">@if (reservaForm.controls.phone.touched && reservaForm.controls.phone.invalid) { <span class="mt-1 block text-xs text-red-700">Ingresa un celular ecuatoriano de 10 dígitos que inicie con 09.</span> }</label>
+            }
+            @if (reservaPaso() === 2) {
+            <section class="rounded-2xl border border-stone-200 p-4"><h3 class="font-bold">Resumen de tu reserva</h3><dl class="mt-3 grid grid-cols-2 gap-3 text-sm"><div><dt class="text-slate-500">Atracción</dt><dd class="font-semibold">{{ nombreDe(atraccion) }}</dd></div><div><dt class="text-slate-500">Fecha y hora</dt><dd class="font-semibold">{{ fechaReserva(reservaForm.controls.date.value) }} · {{ reservaForm.controls.time.value }}</dd></div><div><dt class="text-slate-500">Entradas</dt><dd class="font-semibold">{{ reservaForm.controls.ticket_count.value }}</dd></div><div><dt class="text-slate-500">Titular</dt><dd class="font-semibold">{{ nombreTitular() }} · {{ reservaForm.controls.customer_email.value }}</dd></div></dl><div class="mt-4 flex justify-between border-t pt-3 font-bold"><span>Total</span><span>{{ totalReservaFormateado() }}</span></div></section>
+            <fieldset class="rounded-2xl bg-stone-50 p-4"><legend class="px-1 text-sm font-bold">Método de pago</legend><div class="mt-2 flex gap-3"><label class="flex flex-1 cursor-pointer items-center gap-2 rounded-xl border bg-white p-3 text-sm"><input type="radio" name="pago" [checked]="metodoPago() === 'tarjeta'" (change)="seleccionarMetodoPago('tarjeta')">Tarjeta crédito / débito</label><label class="flex flex-1 cursor-pointer items-center gap-2 rounded-xl border bg-white p-3 text-sm"><input type="radio" name="pago" [checked]="metodoPago() === 'paypal'" (change)="seleccionarMetodoPago('paypal')">PayPal</label></div></fieldset>
+            @if (metodoPago() === 'tarjeta') {
+              <label class="block text-sm font-semibold">Nombre del titular<input maxlength="50" formControlName="cardholder" (input)="filtrarLetras($event, 'cardholder')" autocomplete="cc-name" class="mt-1 w-full rounded-xl border border-stone-300 px-4 py-3 font-normal" placeholder="Solo letras y espacios">@if (reservaForm.controls.cardholder.touched && reservaForm.controls.cardholder.invalid) { <span class="mt-1 block text-xs font-normal text-red-700">Ingresa el nombre tal como aparece en la tarjeta.</span> }</label>
+              <label class="block text-sm font-semibold">Número de tarjeta<input type="text" maxlength="19" formControlName="card_number" (input)="filtrarDigitos($event, 19, 'card_number')" (blur)="registrarErrorValidacionCheckout('card_number')" inputmode="numeric" autocomplete="cc-number" [class.border-red-600]="reservaForm.controls.card_number.touched && reservaForm.controls.card_number.invalid" class="mt-1 w-full rounded-xl border border-stone-300 px-4 py-3 font-normal focus:ring-2 focus:ring-teal-100" placeholder="13 a 19 dígitos">@if (reservaForm.controls.card_number.pending) { <span class="mt-1 block text-xs font-normal text-slate-600" aria-live="polite">Validando tarjeta...</span> } @else if (reservaForm.controls.card_number.touched && reservaForm.controls.card_number.invalid) { <span class="mt-1 block text-xs font-normal text-red-700">{{ reservaForm.controls.card_number.hasError('tarjetaInvalida') ? 'Número de tarjeta no válido' : 'Ingresa entre 13 y 19 dígitos.' }}</span> }</label>
+              <div class="grid grid-cols-2 gap-3"><label class="text-sm font-semibold">Caducidad<input type="text" maxlength="5" formControlName="card_expiry" (input)="formatearCaducidad($event)" inputmode="numeric" autocomplete="cc-exp" placeholder="MM/AA" [class.border-red-600]="reservaForm.controls.card_expiry.touched && reservaForm.controls.card_expiry.invalid" class="mt-1 w-full rounded-xl border border-stone-300 px-4 py-3 font-normal focus:ring-2 focus:ring-teal-100">@if (reservaForm.controls.card_expiry.touched && reservaForm.controls.card_expiry.hasError('caducidadPasada')) { <span class="mt-1 block text-xs font-normal text-red-700">La tarjeta está vencida. Ingresa una fecha actual o futura.</span> } @else if (reservaForm.controls.card_expiry.touched && reservaForm.controls.card_expiry.invalid) { <span class="mt-1 block text-xs font-normal text-red-700">Usa MM/AA con un mes entre 01 y 12.</span> }</label><label class="text-sm font-semibold">CVC<input type="text" maxlength="3" formControlName="card_cvc" (input)="filtrarDigitos($event, 3, 'card_cvc')" inputmode="numeric" autocomplete="cc-csc" placeholder="3 dígitos" class="mt-1 w-full rounded-xl border border-stone-300 px-4 py-3 font-normal">@if (reservaForm.controls.card_cvc.touched && reservaForm.controls.card_cvc.invalid) { <span class="mt-1 block text-xs font-normal text-red-700">Ingresa exactamente 3 dígitos.</span> }</label></div>
+            }
+            <p class="text-xs text-slate-500">Simulación de pago. Los datos de tarjeta no se envían ni se almacenan.</p>
+            }
             @if (errorReserva()) {
               <p class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800" role="alert">{{ errorReserva() }}</p>
             }
 
             <div class="flex flex-col-reverse gap-3 pt-1 sm:flex-row sm:justify-end">
+              @if (reservaPaso() >= 0) { <button type="button" (click)="reservaPaso.set(reservaPaso() === 2 ? 1 : reservaPaso() === 1 ? 0 : -1)" class="rounded-xl border border-stone-300 px-5 py-3 text-sm font-semibold text-slate-700">Atrás</button> }
               <button type="button" (click)="cerrarModal()" [disabled]="reservaEnviando()" class="rounded-xl border border-stone-300 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-stone-50 disabled:opacity-50">Cancelar</button>
-              <button type="submit" [disabled]="reservaEnviando()" class="inline-flex items-center justify-center gap-2 rounded-xl bg-teal-700 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-800 disabled:cursor-wait disabled:opacity-70">
+              <button type="submit" [disabled]="reservaEnviando() || validacionCheckoutPendiente() || (reservaPaso() === 2 && pagoCheckoutInvalido())" [attr.aria-busy]="reservaEnviando() || validacionCheckoutPendiente()" class="inline-flex items-center justify-center gap-2 rounded-xl bg-teal-700 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-800 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:ring-offset-2 disabled:cursor-wait disabled:opacity-70">
                 @if (reservaEnviando()) {
                   <svg class="size-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4zm2 5.3A7.96 7.96 0 014 12H0c0 3.04 1.13 5.82 3 7.94l3-2.64z"/></svg>
                   Procesando...
                 } @else {
-                  Confirmar reserva
+                  {{ reservaPaso() < 0 ? 'Elige fecha y entradas' : reservaPaso() === 0 ? 'Siguiente' : reservaPaso() === 1 ? 'Datos de pago ›' : '🔒 Completar la reserva' }}
                 }
               </button>
             </div>
           </form>
         </div>
+      </section>
+    </div>
+  }
+
+  @if (reservaConfirmada(); as voucher) {
+    <div class="fixed inset-0 z-[90] flex items-center justify-center overflow-y-auto bg-slate-950/70 p-3 backdrop-blur-sm sm:p-6" (click)="cerrarVoucher()">
+      <section class="my-auto w-full max-w-3xl overflow-hidden rounded-3xl bg-white shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="voucher-titulo" (click)="$event.stopPropagation()">
+        <header class="relative overflow-hidden bg-gradient-to-r from-emerald-800 to-teal-700 px-6 py-7 text-white sm:px-9">
+          <div class="absolute -right-8 -top-16 size-56 rounded-full border-[24px] border-white/10"></div>
+          <div class="relative flex items-start justify-between gap-4">
+            <div><span class="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-bold uppercase tracking-wider"><svg class="size-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m4 10 4 4 8-8" stroke-linecap="round" stroke-linejoin="round"/></svg>Reserva {{ voucher.reservation.status === 'CONFIRMED' ? 'confirmada' : 'recibida' }}</span><h2 id="voucher-titulo" class="mt-3 text-2xl font-black sm:text-3xl">Tu entrada está lista</h2><p class="mt-1 text-sm text-white/80">Presenta este código al operador el día de tu experiencia.</p></div>
+            <button type="button" (click)="cerrarVoucher()" class="grid size-10 shrink-0 place-items-center rounded-full bg-white/15 text-2xl transition hover:bg-white/25" aria-label="Cerrar voucher">×</button>
+          </div>
+        </header>
+        <div class="grid md:grid-cols-[minmax(0,1fr)_240px]">
+          <div class="p-6 sm:p-9">
+            <div class="flex items-start gap-4"><img [src]="voucher.attraction.images?.[0]?.url || voucher.attraction.photos?.[0]?.url || 'https://images.unsplash.com/photo-1519501025264-65ba15a82390?auto=format&fit=crop&w=500&q=80'" [alt]="voucher.attraction.name || voucher.attraction.nombre || 'Experiencia reservada'" class="size-20 shrink-0 rounded-2xl object-cover"><div class="min-w-0"><p class="text-xs font-bold uppercase tracking-wider text-teal-700">Experiencia</p><h3 class="mt-1 text-lg font-bold leading-6">{{ voucher.attraction.name || voucher.attraction.nombre }}</h3><p class="mt-1 text-sm text-slate-500">{{ voucher.attraction.ciudad || 'Ecuador' }}</p></div></div>
+            <div class="my-6 border-t border-dashed border-slate-300"></div>
+            <div class="grid grid-cols-2 gap-x-5 gap-y-5 text-sm"><div><p class="text-xs text-slate-500">Titular</p><p class="mt-1 font-semibold text-slate-900">{{ voucher.customerName }}</p></div><div><p class="text-xs text-slate-500">Fecha</p><p class="mt-1 font-semibold text-slate-900">{{ fechaReserva(voucher.date) }}</p></div><div><p class="text-xs text-slate-500">Participantes</p><p class="mt-1 font-semibold text-slate-900">{{ voucher.reservation.ticket_count }} {{ voucher.reservation.ticket_count === 1 ? 'persona' : 'personas' }}</p></div><div><p class="text-xs text-slate-500">Total pagado</p><p class="mt-1 font-bold text-teal-800">{{ totalVoucher(voucher.reservation) }}</p></div></div>
+            <div class="mt-7 rounded-xl bg-slate-50 p-4"><p class="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Código de reserva</p><p class="mt-1 break-all font-mono text-sm font-bold text-slate-900">{{ voucher.reservation.reservation_id }}</p></div>
+          </div>
+          <aside class="flex flex-col items-center justify-center border-t border-dashed border-slate-200 bg-stone-50 p-6 text-center md:border-l md:border-t-0"><div class="rounded-2xl bg-white p-3 shadow-sm ring-1 ring-slate-200"><img [src]="qrUrl(voucher.reservation.reservation_id)" alt="Código QR de prueba con el identificador de reserva" class="size-44" loading="eager"></div><p class="mt-4 text-sm font-bold text-slate-800">Código para el operador</p><p class="mt-1 max-w-48 text-xs leading-5 text-slate-500">El QR contiene únicamente el identificador de esta reserva.</p></aside>
+        </div>
+        <footer class="flex flex-col-reverse gap-3 border-t border-slate-100 bg-white px-6 py-4 sm:flex-row sm:justify-end sm:px-9"><button type="button" (click)="cerrarVoucher()" class="rounded-xl bg-teal-700 px-5 py-3 text-sm font-bold text-white transition hover:bg-teal-800">Listo</button></footer>
       </section>
     </div>
   }

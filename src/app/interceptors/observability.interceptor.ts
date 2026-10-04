@@ -4,6 +4,7 @@ import { catchError, finalize, tap, throwError } from 'rxjs';
 import { ObservabilityService } from '../services/observability.service';
 
 export const observabilityInterceptor: HttpInterceptorFn = (request, next) => {
+  if (!/\/api\//i.test(request.url)) return next(request);
   const observability = inject(ObservabilityService);
   const startedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
   let status = 0;

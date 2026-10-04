@@ -43,7 +43,19 @@ export class ObservabilityDashboard implements OnDestroy {
       failed: requests.filter((event) => event.name === 'http_error' || this.statusCode(event) >= 400 || this.statusCode(event) === 0).length,
     };
   });
-  protected readonly clickCount = computed(() => this.events().filter((event) => event.type === 'click').length);
+  protected readonly keyActionCounts = computed(() => {
+    const events = this.events();
+    return {
+      searches: events.filter((event) => event.eventType === 'SEARCH').length,
+      attractionViews: events.filter((event) => event.eventType === 'VIEW_ATTRACTION').length,
+      packageSelections: events.filter((event) => event.eventType === 'SELECT_PACKAGE').length,
+      reservations: events.filter((event) => event.eventType === 'RESERVATION_SUCCESS').length,
+    };
+  });
+  protected readonly clickCount = computed(() => {
+    const metrics = this.keyActionCounts();
+    return metrics.searches + metrics.attractionViews + metrics.packageSelections + metrics.reservations;
+  });
   protected readonly jsErrorCount = computed(() => this.events().filter((event) => event.type === 'js').length);
   protected readonly rejectedPromiseCount = computed(() => this.events().filter((event) => event.name === 'unhandled_rejection').length);
   protected readonly endpointMetrics = computed<EndpointMetric[]>(() => {
@@ -74,7 +86,7 @@ export class ObservabilityDashboard implements OnDestroy {
         (filter === 'auth' && event.type === 'auth') ||
         (filter === 'click' && event.type === 'click') ||
         (filter === 'errors' && (event.type === 'js' || (event.type === 'http' && (event.name === 'http_error' || status >= 400))));
-      const text = `${event.type} ${event.name} ${JSON.stringify(event.details ?? {})}`.toLocaleLowerCase();
+      const text = `${event.eventType} ${event.userRole} ${event.type} ${event.name} ${JSON.stringify(event.payload ?? event.details ?? {})}`.toLocaleLowerCase();
       return passesFilter && (!query || text.includes(query));
     }).slice().reverse();
   });

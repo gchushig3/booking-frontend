@@ -2,16 +2,22 @@ import { Injectable, inject, isDevMode, signal } from '@angular/core';
 import { AuthService } from './auth.service';
 
 export type ObservabilityCategory = 'navigation' | 'click' | 'http' | 'js' | 'auth' | 'search' | 'filter' | 'booking' | 'modal' | 'system';
+export type AnalyticsEventType = 'SEARCH' | 'VIEW_ATTRACTION' | 'SELECT_PACKAGE' | 'CHECKOUT_STEP' | 'RESERVATION_SUCCESS' | 'HTTP_LATENCY' | 'OTHER';
+export type AnalyticsUserRole = 'GUEST' | 'ADMIN';
 export interface ObservabilityEvent {
   id: string;
   timestamp: string;
   type: ObservabilityCategory;
   name: string;
+  eventType: AnalyticsEventType;
+  payload: Record<string, unknown>;
+  userRole: AnalyticsUserRole;
   details?: Record<string, unknown>;
 }
 
-const STORAGE_KEY = 'booking-observability:v1';
-const MAX_EVENTS = 500;
+const STORAGE_KEY = 'viveloeu_analytics_events';
+const LEGACY_STORAGE_KEY = 'booking-observability:v1';
+const MAX_EVENTS = 100;
 
 @Injectable({ providedIn: 'root' })
 export class ObservabilityService {
@@ -23,12 +29,16 @@ export class ObservabilityService {
     this.track('navigation', 'page_load', { url: this.safe(() => `${location.origin}${location.pathname}`, '') });
     this.installGlobalListeners();
     this.installConsoleApi();
+    this.safe(() => window.addEventListener('storage', (event) => {
+      if (event.key === STORAGE_KEY || event.key === null) this.refreshFromStorage();
+    }), undefined);
   }
 
-  track(type: ObservabilityCategory, name: string, details?: Record<string, unknown>): void {
+  track(type: ObservabilityCategory, name: string, details?: Record<string, unknown>, eventType = this.inferEventType(type, name)): void {
+    const payload = details ? this.sanitize(details) : {};
     const event: ObservabilityEvent = {
       id: this.makeId(), timestamp: new Date().toISOString(), type, name,
-      ...(details ? { details: this.sanitize(details) } : {}),
+      eventType, payload, details: payload, userRole: this.authService.isAdmin() ? 'ADMIN' : 'GUEST',
     };
     const events = [...this.events(), event].slice(-MAX_EVENTS);
     this.events.set(events);
@@ -36,9 +46,17 @@ export class ObservabilityService {
   }
 
   recordHttp(method: string, url: string, durationMs: number, status: number, error = false): void {
-    this.track('http', error ? 'http_error' : 'http_request', {
-      method, url: this.safeUrl(url), durationMs: Math.round(durationMs), status,
-    });
+    const payload = { method, url: this.apiRoute(url), durationMs: Math.round(durationMs), status };
+    this.track('http', error ? 'http_error' : 'http_request', payload, 'HTTP_LATENCY');
+  }
+
+  trackEvent(eventType: Exclude<AnalyticsEventType, 'HTTP_LATENCY'>, payload: Record<string, unknown>): void {
+    const legacy = eventType === 'SEARCH' ? ['search', 'search_submitted'] as const
+      : eventType === 'VIEW_ATTRACTION' ? ['navigation', 'attraction_viewed'] as const
+      : eventType === 'SELECT_PACKAGE' ? ['booking', 'package_selected'] as const
+      : eventType === 'CHECKOUT_STEP' ? ['booking', 'checkout_step'] as const
+      : ['booking', 'booking_success'] as const;
+    this.track(legacy[0], legacy[1], payload, eventType);
   }
 
   getSnapshot(): Record<string, unknown> {
@@ -72,16 +90,14 @@ export class ObservabilityService {
     const stored = this.safe(() => localStorage.getItem(STORAGE_KEY), undefined as string | null | undefined);
     if (stored === undefined) return;
     if (!stored) {
-      this.events.set([]);
+      const legacy = this.safe(() => localStorage.getItem(LEGACY_STORAGE_KEY), null);
+      if (legacy) {
+        this.loadStoredValue(legacy);
+        this.safe(() => localStorage.removeItem(LEGACY_STORAGE_KEY), undefined);
+      } else this.events.set([]);
       return;
     }
-    this.safe(() => {
-      const parsedValue: unknown = JSON.parse(stored);
-      const parsed = Array.isArray(parsedValue) ? parsedValue as ObservabilityEvent[] : [];
-      const events = this.realEvents(parsed).slice(-MAX_EVENTS);
-      this.events.set(events);
-      if (events.length !== parsed.length || !Array.isArray(parsedValue)) this.persist(events);
-    }, undefined);
+    this.loadStoredValue(stored);
   }
 
   private installGlobalListeners(): void {
@@ -110,14 +126,34 @@ export class ObservabilityService {
 
   private readEvents(): ObservabilityEvent[] {
     return this.safe(() => {
-      const value = localStorage.getItem(STORAGE_KEY);
+      const value = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(LEGACY_STORAGE_KEY);
       if (!value) return [];
       const parsedValue: unknown = JSON.parse(value);
-      const parsed = Array.isArray(parsedValue) ? parsedValue as ObservabilityEvent[] : [];
-      const events = this.realEvents(parsed).slice(-MAX_EVENTS);
-      if (events.length !== parsed.length || !Array.isArray(parsedValue)) this.persist(events);
+      const parsed = Array.isArray(parsedValue) ? parsedValue as Partial<ObservabilityEvent>[] : [];
+      const events = this.realEvents(parsed.map((event) => this.normalizeEvent(event))).slice(-MAX_EVENTS);
+      if (events.length !== parsed.length || !Array.isArray(parsedValue) || value !== localStorage.getItem(STORAGE_KEY)) this.persist(events);
+      this.safe(() => localStorage.removeItem(LEGACY_STORAGE_KEY), undefined);
       return events;
     }, []);
+  }
+  private loadStoredValue(value: string): void {
+    this.safe(() => {
+      const parsedValue: unknown = JSON.parse(value);
+      const parsed = Array.isArray(parsedValue) ? parsedValue as Partial<ObservabilityEvent>[] : [];
+      const events = this.realEvents(parsed.map((event) => this.normalizeEvent(event))).slice(-MAX_EVENTS);
+      this.events.set(events);
+      if (events.length !== parsed.length || !Array.isArray(parsedValue)) this.persist(events);
+    }, undefined);
+  }
+  private normalizeEvent(event: Partial<ObservabilityEvent>): ObservabilityEvent {
+    const type = event.type ?? 'system';
+    const name = event.name ?? 'legacy_event';
+    const payload = event.payload ?? event.details ?? {};
+    return {
+      id: event.id ?? this.makeId(), timestamp: event.timestamp ?? new Date().toISOString(), type, name,
+      eventType: event.eventType ?? this.inferEventType(type, name), payload, details: event.details ?? payload,
+      userRole: event.userRole ?? 'GUEST',
+    };
   }
   private realEvents(events: ObservabilityEvent[]): ObservabilityEvent[] {
     return events.filter((event) => event?.name !== 'demo_event' && event?.name !== 'demo_error');
@@ -128,10 +164,28 @@ export class ObservabilityService {
   private now(): number { return this.safe(() => performance.now(), Date.now()); }
   private makeId(): string { return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`; }
   private safeUrl(value: string): string { return value.split('?')[0]?.slice(0, 240) ?? ''; }
+  private apiRoute(value: string): string {
+    const path = this.safe(() => new URL(value, location.origin).pathname, value.split('?')[0] ?? '');
+    const parts = path.split('/');
+    const versionIndex = parts.findIndex((part) => /^v\d+$/i.test(part));
+    for (let index = versionIndex >= 0 ? versionIndex + 2 : 0; index < parts.length; index++) {
+      if (/^\d+$/.test(parts[index]) || /^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(parts[index])) parts[index] = ':id';
+    }
+    return parts.join('/').slice(0, 240);
+  }
+  private inferEventType(type: ObservabilityCategory, name: string): AnalyticsEventType {
+    if (type === 'http') return 'HTTP_LATENCY';
+    if (name.includes('attraction_view')) return 'VIEW_ATTRACTION';
+    if (name.includes('package_selected')) return 'SELECT_PACKAGE';
+    if (name.includes('checkout_step')) return 'CHECKOUT_STEP';
+    if (name.includes('booking_success')) return 'RESERVATION_SUCCESS';
+    if (name.includes('search')) return 'SEARCH';
+    return 'OTHER';
+  }
   private sanitize(value: Record<string, unknown>): Record<string, unknown> {
     const result: Record<string, unknown> = {};
     for (const [key, item] of Object.entries(value)) {
-      if (/password|token|authorization|email|customer_name/i.test(key)) continue;
+      if (/password|token|authorization|email|customer_name|identity_number|card|cvc/i.test(key)) continue;
       result[key] = typeof item === 'string' ? item.slice(0, 300) : item;
     }
     return result;

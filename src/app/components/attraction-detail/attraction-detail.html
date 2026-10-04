@@ -1,0 +1,63 @@
+<main class="min-h-screen bg-stone-50 px-4 py-8 text-slate-900 sm:px-8">
+  <div class="mx-auto max-w-7xl">
+    <nav class="mb-6 flex flex-wrap items-center gap-2 text-sm text-slate-500" aria-label="Migas de pan">
+      <a routerLink="/" class="hover:text-teal-700 hover:underline">Inicio</a><span aria-hidden="true">›</span><a routerLink="/actividades" [queryParams]="{ destino: 'Ecuador' }" class="hover:text-teal-700 hover:underline">Ecuador</a>
+      @if (attraction(); as item) { <span aria-hidden="true">›</span><a routerLink="/actividades" [queryParams]="{ destino: provinceOf(item) }" class="hover:text-teal-700 hover:underline">{{ provinceOf(item) }}</a><span aria-hidden="true">›</span><span class="font-semibold text-slate-800">{{ nameOf(item) }}</span> }
+    </nav>
+    @if (loading()) { <div class="rounded-3xl bg-white p-12 text-center text-slate-500">Cargando ficha…</div> }
+    @else if (!attraction()) { <section class="rounded-3xl bg-white p-12 text-center"><h1 class="text-2xl font-bold">No encontramos esta atracción</h1><a routerLink="/actividades" class="mt-4 inline-block text-teal-700 underline">Volver a actividades</a></section> }
+    @else { @let item = attraction()!;
+      <header class="mb-6"><p class="text-sm font-bold uppercase tracking-widest text-teal-700">{{ categoryOf(item) }}</p><h1 class="mt-2 text-3xl font-black sm:text-4xl">{{ nameOf(item) }}</h1><p class="mt-2 text-slate-600">{{ cityOf(item) }} · {{ provinceOf(item) }}, Ecuador</p></header>
+      <div class="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_400px]">
+        <div class="min-w-0 space-y-8">
+          <section class="grid min-h-72 grid-cols-2 gap-2 overflow-hidden rounded-3xl bg-stone-200 sm:min-h-[430px]" aria-label="Galería fotográfica">
+            @if (images().length) { @for (image of images().slice(0, 4); track image; let i = $index) { <img [src]="image" [alt]="nameOf(item) + ' — fotografía ' + (i + 1)" [class.row-span-2]="i === 0" [class.col-span-2]="images().length === 1" class="h-full min-h-36 w-full object-cover" [class.hidden]="i > 0 && images().length === 1" loading="lazy"> } }
+            @else { <div class="col-span-2 grid min-h-72 place-items-center bg-gradient-to-br from-teal-100 to-stone-200 text-teal-900 sm:min-h-[430px]">Fotografías no disponibles</div> }
+          </section>
+          <section class="rounded-3xl bg-white p-6 shadow-sm sm:p-8"><h2 class="text-2xl font-bold">Sobre esta experiencia</h2><p class="mt-4 whitespace-pre-line leading-7 text-slate-600">{{ item.long_description || item.descripcion || 'Descubre esta experiencia en Ecuador.' }}</p><h3 class="mt-7 font-bold">Qué incluye</h3><ul class="mt-3 grid gap-2 sm:grid-cols-2">@for (include of includesOf(item); track include) { <li class="flex items-start gap-2 text-sm text-slate-600"><span class="text-teal-700">✓</span>{{ include }}</li> }</ul></section>
+        </div>
+        <aside class="sticky top-24 rounded-3xl border border-stone-200 bg-white p-5 shadow-lg sm:p-6" aria-labelledby="tickets-heading">
+          <h2 id="tickets-heading" class="text-2xl font-black">Tickets y Disponibilidad</h2><p class="mt-1 text-sm text-slate-500">Elige el paquete, fecha y turno.</p>
+          <div class="mt-5 space-y-3">@for (option of packages; track option.type) {
+            <article [class.border-teal-700]="selectedType() === option.type" [class.bg-teal-50]="selectedType() === option.type" class="rounded-2xl border border-stone-200 p-4 transition">
+              <button type="button" class="w-full text-left" (click)="choose(option.type)" [attr.aria-pressed]="selectedType() === option.type"><span class="flex items-start justify-between gap-3"><span><span class="font-bold">{{ option.name }}</span><span class="mt-1 block text-xs leading-5 text-slate-600">{{ option.description }}</span></span><span class="shrink-0 text-right text-sm font-bold">{{ priceLabel(item, option.type) }}<span class="block text-[10px] font-normal text-slate-500">por persona</span></span></span></button>
+              @if (selectedType() === option.type) {
+                <div class="mt-3 border-t border-teal-100 pt-3">
+                  <p class="mb-3 flex items-center gap-2 text-xs font-semibold text-teal-900">
+                    @if (option.type === 'SINGLE_TICKET') { <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 21v-2a7 7 0 0 1 14 0v2"/></svg>Desde 1 persona }
+                    @else if (option.type === 'GUIDED_TOUR') { <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 21v-2a6 6 0 0 1 12 0v2m1-5a5 5 0 0 1 5 5"/></svg>Mínimo 2 personas · Máximo {{ availability() ? maximumQuantity() : guidedGroupLimit }} por grupo }
+                    @else { <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m12 3 2.6 5.3 5.9.9-4.3 4.2 1 5.9-5.2-2.8-5.2 2.8 1-5.9-4.3-4.2 5.9-.9L12 3Z"/></svg>Para individuales o grupos · Precio según participantes }
+                  </p>
+                  <div class="space-y-3">
+                    <div class="flex items-center justify-between gap-2"><span class="text-xs font-semibold text-slate-700">Adultos / Personas (10+ años)<span class="mt-0.5 block text-[11px] font-normal text-slate-600">Tarifa {{ option.type === 'GUIDED_TOUR' ? 'según grupo' : priceLabel(item, option.type) }}</span></span><div class="flex items-center gap-3"><button type="button" (click)="decrementAdult()" [disabled]="quantity() <= minimumQuantity() || adults() === 0" aria-label="Quitar adulto" class="grid size-8 place-items-center rounded-full border border-stone-300 text-lg disabled:cursor-not-allowed disabled:opacity-40">−</button><span class="min-w-5 text-center font-bold" aria-live="polite">{{ adults() }}</span><button type="button" (click)="incrementAdult()" [disabled]="availabilityLoading() || quantity() >= maximumQuantity()" aria-label="Agregar adulto" class="grid size-8 place-items-center rounded-full border border-stone-300 text-lg disabled:cursor-not-allowed disabled:opacity-40">+</button></div></div>
+                    <div class="flex items-center justify-between gap-2"><span class="text-xs font-semibold text-slate-700">Niños (menores de 10 años)<span class="mt-0.5 block text-[11px] font-semibold text-emerald-800">Gratis / $0.00</span></span><div class="flex items-center gap-3"><button type="button" (click)="decrementChild()" [disabled]="children() === 0 || quantity() <= minimumQuantity()" aria-label="Quitar niño" class="grid size-8 place-items-center rounded-full border border-stone-300 text-lg disabled:cursor-not-allowed disabled:opacity-40">−</button><span class="min-w-5 text-center font-bold" aria-live="polite">{{ children() }}</span><button type="button" (click)="incrementChild()" [disabled]="availabilityLoading() || quantity() >= maximumQuantity()" aria-label="Agregar niño" class="grid size-8 place-items-center rounded-full border border-stone-300 text-lg disabled:cursor-not-allowed disabled:opacity-40">+</button></div></div>
+                  </div>
+                  @if (option.type === 'GUIDED_TOUR' && quantity() === minimumQuantity()) { <p class="mt-2 text-xs text-slate-600" aria-live="polite">Este tour requiere un mínimo de {{ minimumQuantity() }} participantes para confirmar.</p> }
+                  @else if (maximumQuantity() > 0 && quantity() >= maximumQuantity()) { <p class="mt-2 text-xs font-medium text-amber-800" aria-live="polite">Límite máximo permitido para este paquete alcanzado ({{ maximumQuantity() }} {{ maximumQuantity() === 1 ? 'persona' : 'personas' }}).</p> }
+                </div>
+              }
+              @if (option.type === 'PACKAGE') {
+                <details class="mt-3 rounded-xl border border-stone-200 bg-stone-50 p-3">
+                  <summary class="cursor-pointer text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-600">Políticas del paquete</summary>
+                  <ul class="mt-3 space-y-3 text-xs leading-5 text-slate-700">
+                    <li class="flex gap-2"><svg class="mt-0.5 size-4 shrink-0 text-teal-800" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 21v-2a7 7 0 0 1 14 0v2"/></svg><span>Niños menores de 10 años: ingreso gratuito acompañados de un adulto responsable.</span></li>
+                    <li class="flex gap-2"><svg class="mt-0.5 size-4 shrink-0 text-teal-800" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>Horarios y tolerancia: llega 15 minutos antes de la hora seleccionada.</span></li>
+                    <li class="flex gap-2"><svg class="mt-0.5 size-4 shrink-0 text-teal-800" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.3-5.7L4 8.5"/><path d="M4 4v4.5h4.5"/></svg><span>Cancelación: gratuita hasta 24 horas antes del inicio de la actividad.</span></li>
+                  </ul>
+                </details>
+              }
+            </article>
+          }</div>
+          <label class="mt-5 block text-sm font-semibold">Fecha<input type="date" [min]="minDate" [value]="date()" (change)="selectDate($any($event.target).value)" class="mt-2 w-full rounded-xl border border-stone-300 px-3 py-3"></label>
+          @if (availabilityLoading()) { <p class="mt-3 text-sm text-slate-500" aria-live="polite">Consultando horarios…</p> }
+          @else if (availability(); as slots) { @if (slots.available_spots > 0 && slots.times.length) { <label class="mt-4 block text-sm font-semibold">Horario / turno<select [value]="selectedTime()" (change)="selectTime($any($event.target).value)" class="mt-2 w-full rounded-xl border border-stone-300 bg-white px-3 py-3">@for (time of slots.times; track time) { <option [value]="time">{{ time }}</option> }</select></label><p class="mt-2 text-xs text-emerald-700">{{ slots.available_spots }} cupos disponibles</p> } @else { <p class="mt-3 text-sm font-semibold text-amber-700">Agotado / Sin cupos disponibles</p> } }
+          @if (error()) { <p class="mt-3 text-sm text-red-700" role="alert">{{ error() }}</p> }
+          @if (selectedType() && quantity() > 0) { <div class="mt-4 rounded-xl bg-teal-50 p-4" aria-live="polite"><div class="flex items-center justify-between gap-3 text-sm"><span class="font-semibold text-teal-950">Total · {{ adults() }} {{ adults() === 1 ? 'adulto' : 'adultos' }}<span class="block text-xs font-normal text-teal-800">{{ children() }} {{ children() === 1 ? 'niño gratis' : 'niños gratis' }} · {{ quantity() }} cupos</span></span><span class="text-lg font-black text-teal-950">{{ totalPrice() | currency:currencyCode():'symbol':'1.2-2':'es-EC' }}</span></div>
+            @if (selectedType() === 'GUIDED_TOUR') { <p class="mt-2 border-t border-teal-200 pt-2 text-xs text-teal-900">Desglose: {{ adults() % 2 === 1 ? ((adults() - 1) / 2) + ' pareja(s) × $57.00 + 1 persona × $50.00' : (adults() / 2) + ' pareja(s) × $57.00' }} = {{ totalPrice() | currency:currencyCode():'symbol':'1.2-2':'es-EC' }}</p> }
+          </div> }
+          <button type="button" (click)="next()" [disabled]="!selectedType() || !quantityValid() || !selectedTime() || !availability() || availabilityLoading()" class="mt-5 w-full rounded-xl bg-teal-700 px-5 py-4 text-sm font-bold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-45">Siguiente: Datos de la Reserva&nbsp; ›</button>
+        </aside>
+      </div>
+    }
+  </div>
+</main>
