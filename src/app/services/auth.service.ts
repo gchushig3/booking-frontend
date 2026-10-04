@@ -6,6 +6,7 @@ export interface AuthUser {
   id?: string;
   name: string;
   email: string;
+  role?: string | string[];
 }
 
 export interface LoginCredentials {
@@ -22,6 +23,8 @@ interface LoginApiUser {
   userId?: string;
   name?: string;
   email?: string;
+  role?: string | string[];
+  roles?: string[];
 }
 
 interface LoginApiResponse {
@@ -32,6 +35,8 @@ interface LoginApiResponse {
   name?: string;
   email?: string;
   user?: LoginApiUser;
+  role?: string | string[];
+  roles?: string[];
 }
 
 @Injectable({ providedIn: 'root' })
@@ -64,6 +69,7 @@ export class AuthService {
           id: apiUser.id ?? apiUser.userId ?? response.userId,
           name: apiUser.name ?? apiUser.email ?? response.email ?? fallbackEmail,
           email: apiUser.email ?? response.email ?? fallbackEmail,
+          role: apiUser.role ?? apiUser.roles ?? response.role ?? response.roles,
         };
 
         return { token, user };
@@ -91,6 +97,28 @@ export class AuthService {
 
   isLoggedIn(): boolean {
     return this.authenticated();
+  }
+
+  isAdmin(): boolean {
+    if (!this.isLoggedIn()) return false;
+    const claims = this.readJwtClaims();
+    const roles = [this.user()?.role, claims?.['role'], claims?.['roles']]
+      .flatMap((role) => Array.isArray(role) ? role : [role])
+      .filter((role): role is string => typeof role === 'string');
+    return roles.some((role) => role.trim().toLocaleUpperCase() === 'ADMIN');
+  }
+
+  private readJwtClaims(): Record<string, unknown> | null {
+    try {
+      const token = this.getToken();
+      if (!token) return null;
+      const payload = token.split('.')[1];
+      if (!payload) return null;
+      const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+      return JSON.parse(atob(base64.padEnd(Math.ceil(base64.length / 4) * 4, '='))) as Record<string, unknown>;
+    } catch {
+      return null;
+    }
   }
 
   getLoginErrorMessage(error: unknown): string {

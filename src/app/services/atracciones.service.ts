@@ -10,6 +10,7 @@ export interface Atraccion {
   id: string;
   nombre?: string;
   descripcion?: string;
+  ciudad?: string;
   precioTicket?: number;
   duracionHoras?: number;
   product_type?: string;
@@ -20,6 +21,10 @@ export interface Atraccion {
   name?: string;
   long_description?: string;
   duration?: string;
+  region?: string;
+  locations?: { address?: string; city?: string }[];
+  categories?: string[];
+  badges?: string[];
 }
 
 interface AtraccionesResponse {

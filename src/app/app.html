@@ -50,26 +50,50 @@
         <p class="mt-2 text-slate-600">Vuelve pronto para descubrir nuevas experiencias.</p>
       </section>
     } @else {
+      <section class="mb-10" aria-labelledby="regiones-titulo">
+        <div class="mb-5 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+          <div class="max-w-3xl">
+            <p class="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-teal-700">Ecuador de norte a sur</p>
+            <h2 id="regiones-titulo" class="text-2xl font-bold tracking-tight sm:text-3xl">Explora más destinos: Encuentra actividades en diferentes lugares del Ecuador</h2>
+            <p class="mt-2 text-sm text-slate-600">Elige una región y descubre experiencias pensadas para cada paisaje.</p>
+          </div>
+          <button type="button" (click)="seleccionarRegion('TODAS')" [attr.aria-pressed]="regionSeleccionada() === 'TODAS'" [class.bg-teal-700]="regionSeleccionada() === 'TODAS'" [class.text-white]="regionSeleccionada() === 'TODAS'" [class.bg-white]="regionSeleccionada() !== 'TODAS'" [class.text-teal-800]="regionSeleccionada() !== 'TODAS'" class="inline-flex shrink-0 items-center justify-center gap-2 rounded-full border border-teal-700 px-5 py-2.5 text-sm font-bold shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+            <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg>
+            Todas las regiones
+          </button>
+        </div>
+
+        <div class="flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth pb-3 md:grid md:grid-cols-4 md:overflow-visible md:pb-0" role="group" aria-label="Filtrar experiencias por región">
+          @for (region of regionesConConteo(); track region.id) {
+            <button type="button" (click)="seleccionarRegion(region.id)" [attr.aria-pressed]="regionSeleccionada() === region.id" [attr.aria-label]="region.name + ': ' + region.count + ' experiencias'" [style.background-image]="'linear-gradient(180deg, rgba(15, 23, 42, .12) 0%, rgba(15, 23, 42, .82) 100%), url(' + region.image + ')'" class="group relative flex h-52 w-[min(82vw,320px)] shrink-0 snap-start flex-col justify-between overflow-hidden rounded-2xl border border-white/20 bg-cover bg-center p-5 text-left text-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-teal-300 md:w-auto" [class.ring-4]="regionSeleccionada() === region.id" [class.ring-teal-500]="regionSeleccionada() === region.id">
+              <span class="absolute inset-0 bg-teal-900/10 transition duration-300 group-hover:bg-transparent" aria-hidden="true"></span>
+              <span class="relative flex w-full items-start justify-end"><span class="rounded-full bg-black/30 px-3 py-1 text-xs font-bold backdrop-blur-sm">{{ region.count }} {{ region.count === 1 ? 'actividad' : 'actividades' }}</span></span>
+              <span class="relative"><span class="block text-xl font-bold tracking-tight">{{ region.name }}</span><span class="mt-1 block text-xs leading-5 text-white/85">{{ region.description }}</span></span>
+            </button>
+          }
+        </div>
+      </section>
+
       <section class="mb-8 rounded-2xl border border-stone-200 bg-white p-5 shadow-sm sm:p-6" aria-label="Buscar y filtrar atracciones">
         <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto_auto] lg:items-end">
           <label class="block">
             <span class="mb-2 block text-sm font-semibold text-slate-700">Buscar experiencias</span>
             <span class="flex items-center gap-3 rounded-xl border border-stone-300 px-4 py-3 focus-within:border-teal-700 focus-within:ring-2 focus-within:ring-teal-100">
               <svg class="size-5 shrink-0 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4 4"/></svg>
-              <input type="search" [value]="terminoBusqueda()" (input)="terminoBusqueda.set($any($event.target).value)" placeholder="Nombre o descripción..." class="w-full border-0 bg-transparent p-0 text-sm outline-none placeholder:text-slate-400 focus:ring-0" aria-label="Buscar por nombre o descripción">
+              <input type="search" [value]="terminoBusqueda()" (input)="terminoBusqueda.set($any($event.target).value); registrarBusqueda()" placeholder="Nombre o descripción..." class="w-full border-0 bg-transparent p-0 text-sm outline-none placeholder:text-slate-400 focus:ring-0" aria-label="Buscar por nombre o descripción">
             </span>
           </label>
           <div>
             <span class="mb-2 block text-sm font-semibold text-slate-700">Tipo de experiencia</span>
             <div class="flex flex-wrap gap-2" role="group" aria-label="Filtrar por tipo de experiencia">
               @for (tipo of ['TODOS', 'SINGLE_TICKET', 'GUIDED_TOUR', 'PACKAGE']; track tipo) {
-                <button type="button" (click)="tipoSeleccionado.set(tipo)" [attr.aria-pressed]="tipoSeleccionado() === tipo" [class.bg-teal-700]="tipoSeleccionado() === tipo" [class.text-white]="tipoSeleccionado() === tipo" [class.bg-stone-100]="tipoSeleccionado() !== tipo" [class.text-slate-700]="tipoSeleccionado() !== tipo" class="rounded-full px-3 py-2 text-xs font-semibold transition hover:bg-teal-100 sm:text-sm">{{ tipo === 'TODOS' ? tipo : tipo.replace('_', ' ') }}</button>
+                <button type="button" (click)="tipoSeleccionado.set(tipo); registrarFiltro()" [attr.aria-pressed]="tipoSeleccionado() === tipo" [class.bg-teal-700]="tipoSeleccionado() === tipo" [class.text-white]="tipoSeleccionado() === tipo" [class.bg-stone-100]="tipoSeleccionado() !== tipo" [class.text-slate-700]="tipoSeleccionado() !== tipo" class="rounded-full px-3 py-2 text-xs font-semibold transition hover:bg-teal-100 sm:text-sm">{{ tipo === 'TODOS' ? tipo : tipo.replace('_', ' ') }}</button>
               }
             </div>
           </div>
           <label class="block">
             <span class="mb-2 block text-sm font-semibold text-slate-700">Ordenar por precio</span>
-            <select [value]="ordenPrecio()" (change)="ordenPrecio.set($any($event.target).value)" class="w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none focus:border-teal-700 focus:ring-2 focus:ring-teal-100">
+            <select [value]="ordenPrecio()" (change)="ordenPrecio.set($any($event.target).value); registrarFiltro()" class="w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none focus:border-teal-700 focus:ring-2 focus:ring-teal-100">
               <option value="ninguno">Orden predeterminado</option>
               <option value="asc">Menor a mayor</option>
               <option value="desc">Mayor a menor</option>
@@ -84,8 +108,14 @@
           <span class="mx-auto grid size-14 place-items-center rounded-full bg-teal-50 text-teal-700" aria-hidden="true">
             <svg class="size-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4 4M8 11h5"/></svg>
           </span>
-          <h2 class="mt-4 text-lg font-bold">No se encontraron atracciones con los criterios seleccionados</h2>
-          <p class="mt-2 text-sm text-slate-600">Prueba con otra búsqueda o cambia los filtros.</p>
+          @if (regionSeleccionada() !== 'TODAS' && regionesConConteo().find((region) => region.id === regionSeleccionada())?.count === 0) {
+            <h2 class="mt-4 text-lg font-bold">Aún no hay actividades registradas en {{ regionSeleccionada() === 'GALAPAGOS' ? 'Islas Galápagos' : regionSeleccionada() === 'ORIENTE' ? 'Oriente / Amazonía' : regionSeleccionada() === 'COSTA' ? 'la Costa' : 'la Sierra' }}</h2>
+            <p class="mt-2 text-sm text-slate-600">Estamos preparando nuevas experiencias en esta región. Mientras tanto, explora todos los destinos.</p>
+            <button type="button" (click)="seleccionarRegion('TODAS')" class="mt-5 rounded-xl bg-teal-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-teal-800">Ver todas las regiones</button>
+          } @else {
+            <h2 class="mt-4 text-lg font-bold">No se encontraron atracciones con los criterios seleccionados</h2>
+            <p class="mt-2 text-sm text-slate-600">Prueba con otra búsqueda o cambia los filtros.</p>
+          }
         </section>
       } @else {
       <section class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" aria-label="Catálogo de atracciones">
@@ -139,7 +169,8 @@
       }
     </main>
   }
-  <footer class="border-t border-stone-200 bg-white py-6 text-center text-sm text-slate-500">© 2026 Vívelo Ecuador · Descubre algo extraordinario</footer>
+  <footer class="flex flex-col items-center justify-center gap-2 border-t border-stone-200 bg-white py-6 text-center text-sm text-slate-500 sm:flex-row sm:gap-4">© 2026 Vívelo Ecuador · Descubre algo extraordinario @if (authService.isAdmin()) { <button type="button" (click)="abrirObservabilidad()" class="font-semibold text-teal-800 underline underline-offset-4">Observabilidad · {{ eventosObservabilidad().length }}</button> }</footer>
+  <router-outlet />
 
   @if (reservaPorCancelar(); as reserva) {
     <div class="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm" (click)="cancelandoReserva() ? null : reservaPorCancelar.set(null)"><section class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl" role="alertdialog" aria-modal="true" aria-labelledby="cancelar-reserva-titulo" (click)="$event.stopPropagation()"><div class="grid size-12 place-items-center rounded-full bg-red-50 text-red-700"><svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 8v5m0 4h.01M10.3 3.9 2.7 17a2 2 0 0 0 1.7 3h15.2a2 2 0 0 0 1.7-3l-7.6-13.1a2 2 0 0 0-3.4 0Z"/></svg></div><h2 id="cancelar-reserva-titulo" class="mt-4 text-xl font-bold">¿Cancelar esta reserva?</h2><p class="mt-2 text-sm leading-6 text-slate-600">Se cancelará tu reserva para <span class="font-semibold text-slate-900">{{ reserva.attraction?.name || 'esta experiencia' }}</span>. Esta acción no se puede deshacer.</p><div class="mt-6 flex justify-end gap-3"><button type="button" (click)="reservaPorCancelar.set(null)" [disabled]="cancelandoReserva()" class="rounded-xl border border-stone-300 px-4 py-2.5 text-sm font-semibold text-slate-700 disabled:opacity-50">Volver</button><button type="button" (click)="confirmarCancelacion()" [disabled]="cancelandoReserva()" class="rounded-xl bg-red-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-800 disabled:opacity-60">{{ cancelandoReserva() ? 'Cancelando…' : 'Sí, cancelar' }}</button></div></section></div>
