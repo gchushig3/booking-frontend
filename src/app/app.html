@@ -1,344 +1,307 @@
-<!-- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * -->
-<!-- * * * * * * * * * * * The content below * * * * * * * * * * * -->
-<!-- * * * * * * * * * * is only a placeholder * * * * * * * * * * -->
-<!-- * * * * * * * * * * and can be replaced.  * * * * * * * * * * -->
-<!-- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * -->
-<!-- * * * * * * * * * Delete the template below * * * * * * * * * -->
-<!-- * * * * * * * to get started with your project! * * * * * * * -->
-<!-- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * -->
-
-<style>
-  :host {
-    --bright-blue: oklch(51.01% 0.274 263.83);
-    --electric-violet: oklch(53.18% 0.28 296.97);
-    --french-violet: oklch(47.66% 0.246 305.88);
-    --vivid-pink: oklch(69.02% 0.277 332.77);
-    --hot-red: oklch(61.42% 0.238 15.34);
-    --orange-red: oklch(63.32% 0.24 31.68);
-
-    --gray-900: oklch(19.37% 0.006 300.98);
-    --gray-700: oklch(36.98% 0.014 302.71);
-    --gray-400: oklch(70.9% 0.015 304.04);
-
-    --red-to-pink-to-purple-vertical-gradient: linear-gradient(
-      180deg,
-      var(--orange-red) 0%,
-      var(--vivid-pink) 50%,
-      var(--electric-violet) 100%
-    );
-
-    --red-to-pink-to-purple-horizontal-gradient: linear-gradient(
-      90deg,
-      var(--orange-red) 0%,
-      var(--vivid-pink) 50%,
-      var(--electric-violet) 100%
-    );
-
-    --pill-accent: var(--bright-blue);
-
-    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-      Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
-      "Segoe UI Symbol";
-    box-sizing: border-box;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    display: block;
-    height: 100dvh;
-  }
-
-  h1 {
-    font-size: 3.125rem;
-    color: var(--gray-900);
-    font-weight: 500;
-    line-height: 100%;
-    letter-spacing: -0.125rem;
-    margin: 0;
-    font-family: "Inter Tight", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-      Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
-      "Segoe UI Symbol";
-  }
-
-  p {
-    margin: 0;
-    color: var(--gray-700);
-  }
-
-  main {
-    width: 100%;
-    min-height: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 1rem;
-    box-sizing: inherit;
-    position: relative;
-  }
-
-  .angular-logo {
-    max-width: 9.2rem;
-  }
-
-  .content {
-    display: flex;
-    justify-content: space-around;
-    width: 100%;
-    max-width: 700px;
-    margin-bottom: 3rem;
-  }
-
-  .content h1 {
-    margin-top: 1.75rem;
-  }
-
-  .content p {
-    margin-top: 1.5rem;
-  }
-
-  .divider {
-    width: 1px;
-    background: var(--red-to-pink-to-purple-vertical-gradient);
-    margin-inline: 0.5rem;
-  }
-
-  .pill-group {
-    display: flex;
-    flex-direction: column;
-    align-items: start;
-    flex-wrap: wrap;
-    gap: 1.25rem;
-  }
-
-  .pill {
-    display: flex;
-    align-items: center;
-    --pill-accent: var(--bright-blue);
-    background: color-mix(in srgb, var(--pill-accent) 5%, transparent);
-    color: var(--pill-accent);
-    padding-inline: 0.75rem;
-    padding-block: 0.375rem;
-    border-radius: 2.75rem;
-    border: 0;
-    transition: background 0.3s ease;
-    font-family: var(--inter-font);
-    font-size: 0.875rem;
-    font-style: normal;
-    font-weight: 500;
-    line-height: 1.4rem;
-    letter-spacing: -0.00875rem;
-    text-decoration: none;
-    white-space: nowrap;
-  }
-
-  .pill:hover {
-    background: color-mix(in srgb, var(--pill-accent) 15%, transparent);
-  }
-
-  .pill-group .pill:nth-child(6n + 1) {
-    --pill-accent: var(--bright-blue);
-  }
-  .pill-group .pill:nth-child(6n + 2) {
-    --pill-accent: var(--electric-violet);
-  }
-  .pill-group .pill:nth-child(6n + 3) {
-    --pill-accent: var(--french-violet);
-  }
-
-  .pill-group .pill:nth-child(6n + 4),
-  .pill-group .pill:nth-child(6n + 5),
-  .pill-group .pill:nth-child(6n + 6) {
-    --pill-accent: var(--hot-red);
-  }
-
-  .pill-group svg {
-    margin-inline-start: 0.25rem;
-  }
-
-  .social-links {
-    display: flex;
-    align-items: center;
-    gap: 0.73rem;
-    margin-top: 1.5rem;
-  }
-
-  .social-links path {
-    transition: fill 0.3s ease;
-    fill: var(--gray-400);
-  }
-
-  .social-links a:hover svg path {
-    fill: var(--gray-900);
-  }
-
-  @media screen and (max-width: 650px) {
-    .content {
-      flex-direction: column;
-      width: max-content;
-    }
-
-    .divider {
-      height: 1px;
-      width: 100%;
-      background: var(--red-to-pink-to-purple-horizontal-gradient);
-      margin-block: 1.5rem;
-    }
-  }
-</style>
-
-<main class="main">
-  <div class="content">
-    <div class="left-side">
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        viewBox="0 0 982 239"
-        fill="none"
-        class="angular-logo"
-      >
-        <g clip-path="url(#a)">
-          <path
-            fill="url(#b)"
-            d="M388.676 191.625h30.849L363.31 31.828h-35.758l-56.215 159.797h30.848l13.174-39.356h60.061l13.256 39.356Zm-65.461-62.675 21.602-64.311h1.227l21.602 64.311h-44.431Zm126.831-7.527v70.202h-28.23V71.839h27.002v20.374h1.392c2.782-6.71 7.2-12.028 13.255-15.956 6.056-3.927 13.584-5.89 22.503-5.89 8.264 0 15.465 1.8 21.684 5.318 6.137 3.518 10.964 8.673 14.319 15.382 3.437 6.71 5.074 14.81 4.992 24.383v76.175h-28.23v-71.92c0-8.019-2.046-14.237-6.219-18.819-4.173-4.5-9.819-6.791-17.102-6.791-4.91 0-9.328 1.063-13.174 3.272-3.846 2.128-6.792 5.237-9.001 9.328-2.046 4.009-3.191 8.918-3.191 14.728ZM589.233 239c-10.147 0-18.82-1.391-26.103-4.091-7.282-2.7-13.092-6.382-17.511-10.964-4.418-4.582-7.528-9.655-9.164-15.219l25.448-6.136c1.145 2.372 2.782 4.663 4.991 6.954 2.209 2.291 5.155 4.255 8.837 5.81 3.683 1.554 8.428 2.291 14.074 2.291 8.019 0 14.647-1.964 19.884-5.81 5.237-3.845 7.856-10.227 7.856-19.064v-22.665h-1.391c-1.473 2.946-3.601 5.892-6.383 9.001-2.782 3.109-6.464 5.645-10.965 7.691-4.582 2.046-10.228 3.109-17.101 3.109-9.165 0-17.511-2.209-25.039-6.545-7.446-4.337-13.42-10.883-17.757-19.474-4.418-8.673-6.628-19.473-6.628-32.565 0-13.091 2.21-24.301 6.628-33.383 4.419-9.082 10.311-15.955 17.839-20.7 7.528-4.746 15.874-7.037 25.039-7.037 7.037 0 12.846 1.145 17.347 3.518 4.582 2.373 8.182 5.236 10.883 8.51 2.7 3.272 4.746 6.382 6.137 9.327h1.554v-19.8h27.821v121.749c0 10.228-2.454 18.737-7.364 25.447-4.91 6.709-11.538 11.7-20.048 15.055-8.509 3.355-18.165 4.991-28.884 4.991Zm.245-71.266c5.974 0 11.047-1.473 15.302-4.337 4.173-2.945 7.446-7.118 9.573-12.519 2.21-5.482 3.274-12.027 3.274-19.637 0-7.609-1.064-14.155-3.274-19.8-2.127-5.646-5.318-10.064-9.491-13.255-4.174-3.11-9.329-4.746-15.384-4.746s-11.537 1.636-15.792 4.91c-4.173 3.272-7.365 7.772-9.492 13.418-2.128 5.727-3.191 12.191-3.191 19.392 0 7.2 1.063 13.745 3.273 19.228 2.127 5.482 5.318 9.736 9.573 12.764 4.174 3.027 9.41 4.582 15.629 4.582Zm141.56-26.51V71.839h28.23v119.786h-27.412v-21.273h-1.227c-2.7 6.709-7.119 12.191-13.338 16.446-6.137 4.255-13.747 6.382-22.748 6.382-7.855 0-14.81-1.718-20.783-5.237-5.974-3.518-10.72-8.591-14.075-15.382-3.355-6.709-5.073-14.891-5.073-24.464V71.839h28.312v71.921c0 7.609 2.046 13.664 6.219 18.083 4.173 4.5 9.655 6.709 16.365 6.709 4.173 0 8.183-.982 12.111-3.028 3.927-2.045 7.118-5.072 9.655-9.082 2.537-4.091 3.764-9.164 3.764-15.218Zm65.707-109.395v159.796h-28.23V31.828h28.23Zm44.841 162.169c-7.61 0-14.402-1.391-20.457-4.091-6.055-2.7-10.883-6.791-14.32-12.109-3.518-5.319-5.237-11.946-5.237-19.801 0-6.791 1.228-12.355 3.765-16.773 2.536-4.419 5.891-7.937 10.228-10.637 4.337-2.618 9.164-4.664 14.647-6.055 5.4-1.391 11.046-2.373 16.856-3.027 7.037-.737 12.683-1.391 17.102-1.964 4.337-.573 7.528-1.555 9.574-2.782 1.963-1.309 3.027-3.273 3.027-5.973v-.491c0-5.891-1.718-10.391-5.237-13.664-3.518-3.191-8.51-4.828-15.056-4.828-6.955 0-12.356 1.473-16.447 4.5-4.009 3.028-6.71 6.546-8.183 10.719l-26.348-3.764c2.046-7.282 5.483-13.336 10.31-18.328 4.746-4.909 10.638-8.59 17.511-11.045 6.955-2.455 14.565-3.682 22.912-3.682 5.809 0 11.537.654 17.265 2.045s10.965 3.6 15.711 6.71c4.746 3.109 8.51 7.282 11.455 12.6 2.864 5.318 4.337 11.946 4.337 19.883v80.184h-27.166v-16.446h-.9c-1.719 3.355-4.092 6.464-7.201 9.328-3.109 2.864-6.955 5.237-11.619 6.955-4.828 1.718-10.229 2.536-16.529 2.536Zm7.364-20.701c5.646 0 10.556-1.145 14.729-3.354 4.173-2.291 7.364-5.237 9.655-9.001 2.292-3.763 3.355-7.854 3.355-12.273v-14.155c-.9.737-2.373 1.391-4.5 2.046-2.128.654-4.419 1.145-7.037 1.636-2.619.491-5.155.9-7.692 1.227-2.537.328-4.746.655-6.628.901-4.173.572-8.019 1.472-11.292 2.781-3.355 1.31-5.973 3.11-7.855 5.401-1.964 2.291-2.864 5.318-2.864 8.918 0 5.237 1.882 9.164 5.728 11.782 3.682 2.782 8.51 4.091 14.401 4.091Zm64.643 18.328V71.839h27.412v19.965h1.227c2.21-6.955 5.974-12.274 11.292-16.038 5.319-3.763 11.456-5.645 18.329-5.645 1.555 0 3.355.082 5.237.163 1.964.164 3.601.328 4.91.573v25.938c-1.227-.41-3.109-.819-5.646-1.146a58.814 58.814 0 0 0-7.446-.49c-5.155 0-9.738 1.145-13.829 3.354-4.091 2.209-7.282 5.236-9.655 9.164-2.373 3.927-3.519 8.427-3.519 13.5v70.448h-28.312ZM222.077 39.192l-8.019 125.923L137.387 0l84.69 39.192Zm-53.105 162.825-57.933 33.056-57.934-33.056 11.783-28.556h92.301l11.783 28.556ZM111.039 62.675l30.357 73.803H80.681l30.358-73.803ZM7.937 165.115 0 39.192 84.69 0 7.937 165.115Z"
-          />
-          <path
-            fill="url(#c)"
-            d="M388.676 191.625h30.849L363.31 31.828h-35.758l-56.215 159.797h30.848l13.174-39.356h60.061l13.256 39.356Zm-65.461-62.675 21.602-64.311h1.227l21.602 64.311h-44.431Zm126.831-7.527v70.202h-28.23V71.839h27.002v20.374h1.392c2.782-6.71 7.2-12.028 13.255-15.956 6.056-3.927 13.584-5.89 22.503-5.89 8.264 0 15.465 1.8 21.684 5.318 6.137 3.518 10.964 8.673 14.319 15.382 3.437 6.71 5.074 14.81 4.992 24.383v76.175h-28.23v-71.92c0-8.019-2.046-14.237-6.219-18.819-4.173-4.5-9.819-6.791-17.102-6.791-4.91 0-9.328 1.063-13.174 3.272-3.846 2.128-6.792 5.237-9.001 9.328-2.046 4.009-3.191 8.918-3.191 14.728ZM589.233 239c-10.147 0-18.82-1.391-26.103-4.091-7.282-2.7-13.092-6.382-17.511-10.964-4.418-4.582-7.528-9.655-9.164-15.219l25.448-6.136c1.145 2.372 2.782 4.663 4.991 6.954 2.209 2.291 5.155 4.255 8.837 5.81 3.683 1.554 8.428 2.291 14.074 2.291 8.019 0 14.647-1.964 19.884-5.81 5.237-3.845 7.856-10.227 7.856-19.064v-22.665h-1.391c-1.473 2.946-3.601 5.892-6.383 9.001-2.782 3.109-6.464 5.645-10.965 7.691-4.582 2.046-10.228 3.109-17.101 3.109-9.165 0-17.511-2.209-25.039-6.545-7.446-4.337-13.42-10.883-17.757-19.474-4.418-8.673-6.628-19.473-6.628-32.565 0-13.091 2.21-24.301 6.628-33.383 4.419-9.082 10.311-15.955 17.839-20.7 7.528-4.746 15.874-7.037 25.039-7.037 7.037 0 12.846 1.145 17.347 3.518 4.582 2.373 8.182 5.236 10.883 8.51 2.7 3.272 4.746 6.382 6.137 9.327h1.554v-19.8h27.821v121.749c0 10.228-2.454 18.737-7.364 25.447-4.91 6.709-11.538 11.7-20.048 15.055-8.509 3.355-18.165 4.991-28.884 4.991Zm.245-71.266c5.974 0 11.047-1.473 15.302-4.337 4.173-2.945 7.446-7.118 9.573-12.519 2.21-5.482 3.274-12.027 3.274-19.637 0-7.609-1.064-14.155-3.274-19.8-2.127-5.646-5.318-10.064-9.491-13.255-4.174-3.11-9.329-4.746-15.384-4.746s-11.537 1.636-15.792 4.91c-4.173 3.272-7.365 7.772-9.492 13.418-2.128 5.727-3.191 12.191-3.191 19.392 0 7.2 1.063 13.745 3.273 19.228 2.127 5.482 5.318 9.736 9.573 12.764 4.174 3.027 9.41 4.582 15.629 4.582Zm141.56-26.51V71.839h28.23v119.786h-27.412v-21.273h-1.227c-2.7 6.709-7.119 12.191-13.338 16.446-6.137 4.255-13.747 6.382-22.748 6.382-7.855 0-14.81-1.718-20.783-5.237-5.974-3.518-10.72-8.591-14.075-15.382-3.355-6.709-5.073-14.891-5.073-24.464V71.839h28.312v71.921c0 7.609 2.046 13.664 6.219 18.083 4.173 4.5 9.655 6.709 16.365 6.709 4.173 0 8.183-.982 12.111-3.028 3.927-2.045 7.118-5.072 9.655-9.082 2.537-4.091 3.764-9.164 3.764-15.218Zm65.707-109.395v159.796h-28.23V31.828h28.23Zm44.841 162.169c-7.61 0-14.402-1.391-20.457-4.091-6.055-2.7-10.883-6.791-14.32-12.109-3.518-5.319-5.237-11.946-5.237-19.801 0-6.791 1.228-12.355 3.765-16.773 2.536-4.419 5.891-7.937 10.228-10.637 4.337-2.618 9.164-4.664 14.647-6.055 5.4-1.391 11.046-2.373 16.856-3.027 7.037-.737 12.683-1.391 17.102-1.964 4.337-.573 7.528-1.555 9.574-2.782 1.963-1.309 3.027-3.273 3.027-5.973v-.491c0-5.891-1.718-10.391-5.237-13.664-3.518-3.191-8.51-4.828-15.056-4.828-6.955 0-12.356 1.473-16.447 4.5-4.009 3.028-6.71 6.546-8.183 10.719l-26.348-3.764c2.046-7.282 5.483-13.336 10.31-18.328 4.746-4.909 10.638-8.59 17.511-11.045 6.955-2.455 14.565-3.682 22.912-3.682 5.809 0 11.537.654 17.265 2.045s10.965 3.6 15.711 6.71c4.746 3.109 8.51 7.282 11.455 12.6 2.864 5.318 4.337 11.946 4.337 19.883v80.184h-27.166v-16.446h-.9c-1.719 3.355-4.092 6.464-7.201 9.328-3.109 2.864-6.955 5.237-11.619 6.955-4.828 1.718-10.229 2.536-16.529 2.536Zm7.364-20.701c5.646 0 10.556-1.145 14.729-3.354 4.173-2.291 7.364-5.237 9.655-9.001 2.292-3.763 3.355-7.854 3.355-12.273v-14.155c-.9.737-2.373 1.391-4.5 2.046-2.128.654-4.419 1.145-7.037 1.636-2.619.491-5.155.9-7.692 1.227-2.537.328-4.746.655-6.628.901-4.173.572-8.019 1.472-11.292 2.781-3.355 1.31-5.973 3.11-7.855 5.401-1.964 2.291-2.864 5.318-2.864 8.918 0 5.237 1.882 9.164 5.728 11.782 3.682 2.782 8.51 4.091 14.401 4.091Zm64.643 18.328V71.839h27.412v19.965h1.227c2.21-6.955 5.974-12.274 11.292-16.038 5.319-3.763 11.456-5.645 18.329-5.645 1.555 0 3.355.082 5.237.163 1.964.164 3.601.328 4.91.573v25.938c-1.227-.41-3.109-.819-5.646-1.146a58.814 58.814 0 0 0-7.446-.49c-5.155 0-9.738 1.145-13.829 3.354-4.091 2.209-7.282 5.236-9.655 9.164-2.373 3.927-3.519 8.427-3.519 13.5v70.448h-28.312ZM222.077 39.192l-8.019 125.923L137.387 0l84.69 39.192Zm-53.105 162.825-57.933 33.056-57.934-33.056 11.783-28.556h92.301l11.783 28.556ZM111.039 62.675l30.357 73.803H80.681l30.358-73.803ZM7.937 165.115 0 39.192 84.69 0 7.937 165.115Z"
-          />
-        </g>
-        <defs>
-          <radialGradient
-            id="c"
-            cx="0"
-            cy="0"
-            r="1"
-            gradientTransform="rotate(118.122 171.182 60.81) scale(205.794)"
-            gradientUnits="userSpaceOnUse"
-          >
-            <stop stop-color="#FF41F8" />
-            <stop offset=".707" stop-color="#FF41F8" stop-opacity=".5" />
-            <stop offset="1" stop-color="#FF41F8" stop-opacity="0" />
-          </radialGradient>
-          <linearGradient
-            id="b"
-            x1="0"
-            x2="982"
-            y1="192"
-            y2="192"
-            gradientUnits="userSpaceOnUse"
-          >
-            <stop stop-color="#F0060B" />
-            <stop offset="0" stop-color="#F0070C" />
-            <stop offset=".526" stop-color="#CC26D5" />
-            <stop offset="1" stop-color="#7702FF" />
-          </linearGradient>
-          <clipPath id="a"><path fill="#fff" d="M0 0h982v239H0z" /></clipPath>
-        </defs>
-      </svg>
-      <h1>Hello, {{ title() }}</h1>
-      <p>Congratulations! Your app is running. 🎉</p>
-    </div>
-    <div class="divider" role="separator" aria-label="Divider"></div>
-    <div class="right-side">
-      <div class="pill-group">
-        @for (item of [
-          { title: 'Explore the Docs', link: 'https://angular.dev' },
-          { title: 'Learn with Tutorials', link: 'https://angular.dev/tutorials' },
-          { title: 'Prompt and best practices for AI', link: 'https://angular.dev/ai/develop-with-ai'},
-          { title: 'CLI Docs', link: 'https://angular.dev/tools/cli' },
-          { title: 'Angular Language Service', link: 'https://angular.dev/tools/language-service' },
-          { title: 'Angular DevTools', link: 'https://angular.dev/tools/devtools' },
-        ]; track item.title) {
-          <a
-            class="pill"
-            [href]="item.link"
-            target="_blank"
-            rel="noopener"
-          >
-            <span>{{ item.title }}</span>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              height="14"
-              viewBox="0 -960 960 960"
-              width="14"
-              fill="currentColor"
-            >
-              <path
-                d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h280v80H200v560h560v-280h80v280q0 33-23.5 56.5T760-120H200Zm188-212-56-56 372-372H560v-80h280v280h-80v-144L388-332Z"
-              />
-            </svg>
-          </a>
+<div class="min-h-screen bg-stone-50 text-slate-900">
+  <header class="sticky top-0 z-10 border-b border-stone-200 bg-white/95 backdrop-blur">
+    <nav class="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 sm:px-8" aria-label="Navegación principal">
+      <a href="#inicio" class="flex items-center gap-3 font-bold tracking-tight" id="inicio">
+        <span class="grid size-10 place-items-center rounded-xl bg-teal-700 text-lg text-white" aria-hidden="true">V</span>
+        <span class="text-xl">Vívelo <span class="text-teal-700">Ecuador</span></span>
+      </a>
+      <div class="flex items-center gap-3 sm:gap-5">
+        @if (autenticado()) {
+          <div class="flex rounded-xl bg-stone-100 p-1" role="group" aria-label="Secciones">
+            <button type="button" (click)="mostrarVista('catalogo')" [class.bg-white]="vistaActual() === 'catalogo'" [class.shadow-sm]="vistaActual() === 'catalogo'" class="rounded-lg px-3 py-2 text-sm font-semibold text-slate-700">Catálogo</button>
+            <button type="button" (click)="mostrarVista('reservas')" [class.bg-white]="vistaActual() === 'reservas'" [class.shadow-sm]="vistaActual() === 'reservas'" class="rounded-lg px-3 py-2 text-sm font-semibold text-slate-700">Mis Reservas</button>
+          </div>
+          <span class="hidden max-w-48 truncate text-sm font-semibold text-slate-700 md:inline" [attr.title]="usuario()?.email ?? 'Sesión activa'">{{ usuario()?.name ?? usuario()?.email ?? 'Sesión activa' }}</span>
+          <button type="button" (click)="cerrarSesion()" class="rounded-lg border border-stone-300 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-stone-50 sm:px-4">Cerrar sesión</button>
+        } @else {
+          <button type="button" (click)="abrirLogin()" class="rounded-lg bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-teal-800">Iniciar sesión</button>
         }
       </div>
-      <div class="social-links">
-        <a
-          href="https://github.com/angular/angular"
-          aria-label="Github"
-          target="_blank"
-          rel="noopener"
-        >
-          <svg
-            width="25"
-            height="24"
-            viewBox="0 0 25 24"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-            alt="Github"
-          >
-            <path
-              d="M12.3047 0C5.50634 0 0 5.50942 0 12.3047C0 17.7423 3.52529 22.3535 8.41332 23.9787C9.02856 24.0946 9.25414 23.7142 9.25414 23.3871C9.25414 23.0949 9.24389 22.3207 9.23876 21.2953C5.81601 22.0377 5.09414 19.6444 5.09414 19.6444C4.53427 18.2243 3.72524 17.8449 3.72524 17.8449C2.61064 17.082 3.81137 17.0973 3.81137 17.0973C5.04697 17.1835 5.69604 18.3647 5.69604 18.3647C6.79321 20.2463 8.57636 19.7029 9.27978 19.3881C9.39052 18.5924 9.70736 18.0499 10.0591 17.7423C7.32641 17.4347 4.45429 16.3765 4.45429 11.6618C4.45429 10.3185 4.9311 9.22133 5.72065 8.36C5.58222 8.04931 5.16694 6.79833 5.82831 5.10337C5.82831 5.10337 6.85883 4.77319 9.2121 6.36459C10.1965 6.09082 11.2424 5.95546 12.2883 5.94931C13.3342 5.95546 14.3801 6.09082 15.3644 6.36459C17.7023 4.77319 18.7328 5.10337 18.7328 5.10337C19.3942 6.79833 18.9789 8.04931 18.8559 8.36C19.6403 9.22133 20.1171 10.3185 20.1171 11.6618C20.1171 16.3888 17.2409 17.4296 14.5031 17.7321C14.9338 18.1012 15.3337 18.8559 15.3337 20.0084C15.3337 21.6552 15.3183 22.978 15.3183 23.3779C15.3183 23.7009 15.5336 24.0854 16.1642 23.9623C21.0871 22.3484 24.6094 17.7341 24.6094 12.3047C24.6094 5.50942 19.0999 0 12.3047 0Z"
-            />
-          </svg>
-        </a>
-        <a
-          href="https://x.com/angular"
-          aria-label="X"
-          target="_blank"
-          rel="noopener"
-        >
-          <svg
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-            alt="X"
-          >
-            <path
-              d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"
-            />
-          </svg>
-        </a>
-        <a
-          href="https://www.youtube.com/channel/UCbn1OgGei-DV7aSRo_HaAiw"
-          aria-label="Youtube"
-          target="_blank"
-          rel="noopener"
-        >
-          <svg
-            width="29"
-            height="20"
-            viewBox="0 0 29 20"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-            alt="Youtube"
-          >
-            <path
-              fill-rule="evenodd"
-              clip-rule="evenodd"
-              d="M27.4896 1.52422C27.9301 1.96749 28.2463 2.51866 28.4068 3.12258C29.0004 5.35161 29.0004 10 29.0004 10C29.0004 10 29.0004 14.6484 28.4068 16.8774C28.2463 17.4813 27.9301 18.0325 27.4896 18.4758C27.0492 18.9191 26.5 19.2389 25.8972 19.4032C23.6778 20 14.8068 20 14.8068 20C14.8068 20 5.93586 20 3.71651 19.4032C3.11363 19.2389 2.56449 18.9191 2.12405 18.4758C1.68361 18.0325 1.36732 17.4813 1.20683 16.8774C0.613281 14.6484 0.613281 10 0.613281 10C0.613281 10 0.613281 5.35161 1.20683 3.12258C1.36732 2.51866 1.68361 1.96749 2.12405 1.52422C2.56449 1.08095 3.11363 0.76113 3.71651 0.596774C5.93586 0 14.8068 0 14.8068 0C14.8068 0 23.6778 0 25.8972 0.596774C26.5 0.76113 27.0492 1.08095 27.4896 1.52422ZM19.3229 10L11.9036 5.77905V14.221L19.3229 10Z"
-            />
-          </svg>
-        </a>
-      </div>
+    </nav>
+  </header>
+
+  <app-toast-container />
+
+  @if (vistaActual() === 'catalogo') {
+  <main class="mx-auto max-w-7xl px-5 py-12 sm:px-8 sm:py-16" id="catalogo">
+    <section class="mb-10 max-w-2xl">
+      <p class="mb-3 text-sm font-bold uppercase tracking-[0.2em] text-teal-700">Momentos que se quedan contigo</p>
+      <h1 class="text-4xl font-bold tracking-tight sm:text-5xl">Encuentra tu próxima aventura</h1>
+      <p class="mt-4 text-lg leading-7 text-slate-600">Explora lugares únicos, actividades y tours para vivir Ecuador a tu manera.</p>
+    </section>
+
+    @if (cargando()) {
+      <section class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" aria-label="Cargando atracciones" aria-live="polite">
+        @for (item of [1, 2, 3, 4]; track item) {
+          <div class="overflow-hidden rounded-2xl border border-stone-200 bg-white">
+            <div class="h-52 animate-pulse bg-stone-200"></div>
+            <div class="space-y-3 p-5"><div class="h-4 w-24 animate-pulse rounded bg-stone-200"></div><div class="h-6 w-3/4 animate-pulse rounded bg-stone-200"></div><div class="h-4 w-full animate-pulse rounded bg-stone-100"></div></div>
+          </div>
+        }
+      </section>
+    } @else if (error()) {
+      <section class="rounded-2xl border border-red-200 bg-red-50 p-8 text-center" role="alert">
+        <p class="text-lg font-semibold text-red-900">No se pudo mostrar el catálogo</p>
+        <p class="mt-2 text-red-800">{{ error() }}</p>
+      </section>
+    } @else if (atracciones().length === 0) {
+      <section class="rounded-2xl border border-stone-200 bg-white p-12 text-center">
+        <p class="text-lg font-semibold">Aún no hay atracciones disponibles</p>
+        <p class="mt-2 text-slate-600">Vuelve pronto para descubrir nuevas experiencias.</p>
+      </section>
+    } @else {
+      <section class="mb-8 rounded-2xl border border-stone-200 bg-white p-5 shadow-sm sm:p-6" aria-label="Buscar y filtrar atracciones">
+        <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto_auto] lg:items-end">
+          <label class="block">
+            <span class="mb-2 block text-sm font-semibold text-slate-700">Buscar experiencias</span>
+            <span class="flex items-center gap-3 rounded-xl border border-stone-300 px-4 py-3 focus-within:border-teal-700 focus-within:ring-2 focus-within:ring-teal-100">
+              <svg class="size-5 shrink-0 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4 4"/></svg>
+              <input type="search" [value]="terminoBusqueda()" (input)="terminoBusqueda.set($any($event.target).value)" placeholder="Nombre o descripción..." class="w-full border-0 bg-transparent p-0 text-sm outline-none placeholder:text-slate-400 focus:ring-0" aria-label="Buscar por nombre o descripción">
+            </span>
+          </label>
+          <div>
+            <span class="mb-2 block text-sm font-semibold text-slate-700">Tipo de experiencia</span>
+            <div class="flex flex-wrap gap-2" role="group" aria-label="Filtrar por tipo de experiencia">
+              @for (tipo of ['TODOS', 'SINGLE_TICKET', 'GUIDED_TOUR', 'PACKAGE']; track tipo) {
+                <button type="button" (click)="tipoSeleccionado.set(tipo)" [attr.aria-pressed]="tipoSeleccionado() === tipo" [class.bg-teal-700]="tipoSeleccionado() === tipo" [class.text-white]="tipoSeleccionado() === tipo" [class.bg-stone-100]="tipoSeleccionado() !== tipo" [class.text-slate-700]="tipoSeleccionado() !== tipo" class="rounded-full px-3 py-2 text-xs font-semibold transition hover:bg-teal-100 sm:text-sm">{{ tipo === 'TODOS' ? tipo : tipo.replace('_', ' ') }}</button>
+              }
+            </div>
+          </div>
+          <label class="block">
+            <span class="mb-2 block text-sm font-semibold text-slate-700">Ordenar por precio</span>
+            <select [value]="ordenPrecio()" (change)="ordenPrecio.set($any($event.target).value)" class="w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none focus:border-teal-700 focus:ring-2 focus:ring-teal-100">
+              <option value="ninguno">Orden predeterminado</option>
+              <option value="asc">Menor a mayor</option>
+              <option value="desc">Mayor a menor</option>
+            </select>
+          </label>
+        </div>
+        <p class="mt-4 text-sm text-slate-500" aria-live="polite">{{ atraccionesFiltradas().length }} experiencias encontradas</p>
+      </section>
+
+      @if (atraccionesFiltradas().length === 0) {
+        <section class="rounded-2xl border border-stone-200 bg-white px-6 py-14 text-center" aria-live="polite">
+          <span class="mx-auto grid size-14 place-items-center rounded-full bg-teal-50 text-teal-700" aria-hidden="true">
+            <svg class="size-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4 4M8 11h5"/></svg>
+          </span>
+          <h2 class="mt-4 text-lg font-bold">No se encontraron atracciones con los criterios seleccionados</h2>
+          <p class="mt-2 text-sm text-slate-600">Prueba con otra búsqueda o cambia los filtros.</p>
+        </section>
+      } @else {
+      <section class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" aria-label="Catálogo de atracciones">
+        @for (atraccion of atraccionesFiltradas(); track atraccion.id) {
+          <article class="group overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-lg">
+            <div class="relative h-52 overflow-hidden bg-stone-200">
+              <img [src]="imagenDe(atraccion)" [alt]="nombreDe(atraccion)" class="h-full w-full object-cover transition duration-300 group-hover:scale-105" loading="lazy">
+              <span class="absolute left-4 top-4 rounded-full bg-white/95 px-3 py-1 text-xs font-bold capitalize text-teal-800 shadow-sm">{{ atraccion.product_type || 'Experiencia' }}</span>
+            </div>
+            <div class="flex min-h-60 flex-col p-5">
+              <h2 class="text-lg font-bold leading-6">{{ nombreDe(atraccion) }}</h2>
+              <p class="mt-2 line-clamp-3 text-sm leading-6 text-slate-600">{{ descripcionDe(atraccion) }}</p>
+              <div class="mt-4 flex items-center gap-2 text-sm text-slate-600">
+                <svg class="size-4 text-teal-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                <span>{{ duracionDe(atraccion) }}</span>
+              </div>
+              <div class="mt-auto flex items-end justify-between gap-3 pt-5">
+                <div><p class="text-xs text-slate-500">Desde</p><p class="text-xl font-bold text-slate-900">{{ precioDe(atraccion) }}</p></div>
+                <button type="button" (click)="reservar(atraccion)" class="rounded-xl bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-teal-800 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2">Reservar</button>
+              </div>
+            </div>
+          </article>
+        }
+      </section>
+      }
+    }
+  </main>
+  } @else {
+    <main class="mx-auto min-h-[70vh] max-w-7xl px-5 py-12 sm:px-8 sm:py-16" id="mis-reservas">
+      <section class="mb-10 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+        <div><p class="mb-3 text-sm font-bold uppercase tracking-[0.2em] text-teal-700">Tu espacio personal</p><h1 class="text-4xl font-bold tracking-tight sm:text-5xl">Mis Reservas</h1><p class="mt-3 text-lg text-slate-600">Consulta tus experiencias y gestiona tus próximos planes.</p></div>
+        <button type="button" (click)="cargarMisReservas()" class="rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-stone-50">Actualizar lista</button>
+      </section>
+      @if (cargandoReservas()) {
+        <section class="space-y-4" aria-label="Cargando reservas" aria-live="polite">
+          @for (item of [1, 2, 3]; track item) { <div class="flex animate-pulse gap-5 rounded-2xl border border-stone-200 bg-white p-5"><div class="h-32 w-40 rounded-xl bg-stone-200"></div><div class="flex-1 space-y-4 py-2"><div class="h-5 w-1/3 rounded bg-stone-200"></div><div class="h-4 w-1/2 rounded bg-stone-100"></div><div class="h-4 w-1/4 rounded bg-stone-100"></div></div></div> }
+        </section>
+      } @else if (errorReservas()) {
+        <section class="rounded-2xl border border-red-200 bg-red-50 p-8 text-center" role="alert"><p class="font-semibold text-red-900">No se pudieron cargar tus reservas</p><p class="mt-2 text-red-800">{{ errorReservas() }}</p><button type="button" (click)="cargarMisReservas()" class="mt-4 rounded-lg bg-red-800 px-4 py-2 text-sm font-semibold text-white">Reintentar</button></section>
+      } @else if (misReservas().length === 0) {
+        <section class="rounded-3xl border border-stone-200 bg-white px-6 py-16 text-center shadow-sm"><span class="mx-auto grid size-16 place-items-center rounded-full bg-teal-50 text-teal-700" aria-hidden="true"><svg class="size-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18"/></svg></span><h2 class="mt-5 text-xl font-bold">Aún no tienes reservas realizadas</h2><p class="mt-2 text-slate-600">Explora el catálogo y encuentra tu próxima aventura.</p><button type="button" (click)="mostrarVista('catalogo')" class="mt-6 rounded-xl bg-teal-700 px-5 py-3 text-sm font-semibold text-white hover:bg-teal-800">Explorar experiencias</button></section>
+      } @else {
+        <section class="space-y-4" aria-label="Listado de mis reservas">
+          @for (reserva of misReservas(); track reserva.reservation_id) {
+            <article class="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm transition hover:shadow-md sm:flex">
+              <img [src]="reserva.attraction?.image_url || 'https://images.unsplash.com/photo-1519501025264-65ba15a82390?auto=format&fit=crop&w=900&q=80'" [alt]="reserva.attraction?.name || 'Atracción'" class="h-48 w-full object-cover sm:h-auto sm:w-56">
+              <div class="flex flex-1 flex-col justify-between gap-5 p-5 sm:flex-row sm:items-center sm:p-6"><div><div class="flex flex-wrap items-center gap-3"><h2 class="text-xl font-bold">{{ reserva.attraction?.name || 'Atracción reservada' }}</h2><span [class.bg-emerald-100]="reserva.status === 'CONFIRMED'" [class.text-emerald-800]="reserva.status === 'CONFIRMED'" [class.bg-amber-100]="reserva.status === 'PENDING'" [class.text-amber-800]="reserva.status === 'PENDING'" [class.bg-red-100]="reserva.status === 'CANCELLED'" [class.text-red-800]="reserva.status === 'CANCELLED'" class="rounded-full px-3 py-1 text-xs font-bold">{{ reserva.status === 'CONFIRMED' ? 'Confirmada' : reserva.status === 'CANCELLED' ? 'Cancelada' : 'Pendiente' }}</span></div><p class="mt-3 text-sm text-slate-600">Fecha: <span class="font-semibold text-slate-800">{{ fechaReserva(reserva.date) }}{{ reserva.time ? ' · ' + reserva.time : '' }}</span></p><p class="mt-1 text-sm text-slate-600">{{ reserva.ticket_count }} {{ reserva.ticket_count === 1 ? 'persona' : 'personas' }}</p></div><div class="flex items-center justify-between gap-5 border-t border-stone-100 pt-4 sm:flex-col sm:items-end sm:border-0 sm:pt-0"><div class="sm:text-right"><p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Total abonado</p><p class="mt-1 text-xl font-bold text-teal-800">{{ totalReservaDe(reserva) }}</p></div>@if (reserva.status !== 'CANCELLED') { <button type="button" (click)="reservaPorCancelar.set(reserva)" class="rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-700 transition hover:bg-red-50">Cancelar reserva</button> }</div></div>
+            </article>
+          }
+        </section>
+      }
+    </main>
+  }
+  <footer class="border-t border-stone-200 bg-white py-6 text-center text-sm text-slate-500">© 2026 Vívelo Ecuador · Descubre algo extraordinario</footer>
+
+  @if (reservaPorCancelar(); as reserva) {
+    <div class="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm" (click)="cancelandoReserva() ? null : reservaPorCancelar.set(null)"><section class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl" role="alertdialog" aria-modal="true" aria-labelledby="cancelar-reserva-titulo" (click)="$event.stopPropagation()"><div class="grid size-12 place-items-center rounded-full bg-red-50 text-red-700"><svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 8v5m0 4h.01M10.3 3.9 2.7 17a2 2 0 0 0 1.7 3h15.2a2 2 0 0 0 1.7-3l-7.6-13.1a2 2 0 0 0-3.4 0Z"/></svg></div><h2 id="cancelar-reserva-titulo" class="mt-4 text-xl font-bold">¿Cancelar esta reserva?</h2><p class="mt-2 text-sm leading-6 text-slate-600">Se cancelará tu reserva para <span class="font-semibold text-slate-900">{{ reserva.attraction?.name || 'esta experiencia' }}</span>. Esta acción no se puede deshacer.</p><div class="mt-6 flex justify-end gap-3"><button type="button" (click)="reservaPorCancelar.set(null)" [disabled]="cancelandoReserva()" class="rounded-xl border border-stone-300 px-4 py-2.5 text-sm font-semibold text-slate-700 disabled:opacity-50">Volver</button><button type="button" (click)="confirmarCancelacion()" [disabled]="cancelandoReserva()" class="rounded-xl bg-red-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-800 disabled:opacity-60">{{ cancelandoReserva() ? 'Cancelando…' : 'Sí, cancelar' }}</button></div></section></div>
+  }
+
+  @if (loginModalAbierto()) {
+    <div class="fixed inset-0 z-[60] flex items-center justify-center overflow-y-auto bg-slate-950/65 p-4 backdrop-blur-sm" (click)="cerrarLogin()">
+      <section class="my-auto w-full max-w-md overflow-hidden rounded-2xl border border-white/20 bg-white shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="login-titulo" (click)="$event.stopPropagation()">
+        <div class="flex items-start justify-between border-b border-stone-200 px-6 py-5">
+          <div>
+            <p class="text-xs font-bold uppercase tracking-[0.18em] text-teal-700">Vívelo Ecuador</p>
+            <h2 id="login-titulo" class="mt-1 text-2xl font-bold">{{ modoRegistro() ? 'Crea tu cuenta' : 'Inicia sesión' }}</h2>
+          </div>
+          <button type="button" (click)="cerrarLogin()" [disabled]="loginEnviando()" class="grid size-10 place-items-center rounded-full text-2xl text-slate-500 transition hover:bg-stone-100 hover:text-slate-900 disabled:opacity-40" aria-label="Cerrar inicio de sesión">×</button>
+        </div>
+
+        @if (modoRegistro()) {
+          <form [formGroup]="registerForm" (ngSubmit)="registrarse()" class="space-y-5 p-6">
+            <label class="block">
+              <span class="mb-1.5 block text-sm font-semibold text-slate-700">Nombre</span>
+              <input type="text" formControlName="name" autocomplete="name" placeholder="Tu nombre" class="w-full rounded-xl border border-stone-300 px-4 py-3 text-sm outline-none transition focus:border-teal-700 focus:ring-2 focus:ring-teal-100">
+              @if (registerForm.controls.name.touched && registerForm.controls.name.invalid) {
+                <span class="mt-1 block text-xs text-red-700">Ingresa un nombre de al menos 2 caracteres.</span>
+              }
+            </label>
+            <label class="block">
+              <span class="mb-1.5 block text-sm font-semibold text-slate-700">Correo electrónico</span>
+              <input type="email" formControlName="email" autocomplete="email" placeholder="tu@correo.com" class="w-full rounded-xl border border-stone-300 px-4 py-3 text-sm outline-none transition focus:border-teal-700 focus:ring-2 focus:ring-teal-100">
+              @if (registerForm.controls.email.touched && registerForm.controls.email.invalid) {
+                <span class="mt-1 block text-xs text-red-700">Ingresa un correo electrónico válido.</span>
+              }
+            </label>
+            <label class="block">
+              <span class="mb-1.5 block text-sm font-semibold text-slate-700">Contraseña</span>
+              <input type="password" formControlName="password" autocomplete="new-password" placeholder="Mínimo 8 caracteres" class="w-full rounded-xl border border-stone-300 px-4 py-3 text-sm outline-none transition focus:border-teal-700 focus:ring-2 focus:ring-teal-100">
+              @if (registerForm.controls.password.touched && registerForm.controls.password.invalid) {
+                <span class="mt-1 block text-xs text-red-700">Usa entre 8 y 72 caracteres.</span>
+              }
+            </label>
+            @if (errorLogin()) {
+              <p class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm leading-5 text-red-800" role="alert">{{ errorLogin() }}</p>
+            }
+            <div class="flex flex-col-reverse gap-3 pt-1 sm:flex-row sm:justify-end">
+              <button type="button" (click)="cerrarLogin()" [disabled]="loginEnviando()" class="rounded-xl border border-stone-300 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-stone-50 disabled:opacity-50">Cancelar</button>
+              <button type="submit" [disabled]="loginEnviando()" class="inline-flex items-center justify-center gap-2 rounded-xl bg-teal-700 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-800 disabled:cursor-wait disabled:opacity-70">
+                @if (loginEnviando()) { Creando cuenta... } @else { Crear cuenta }
+              </button>
+            </div>
+            <p class="text-center text-sm text-slate-600">¿Ya tienes cuenta? <button type="button" (click)="mostrarLogin()" class="font-semibold text-teal-800 underline-offset-4 hover:underline">Inicia sesión</button></p>
+          </form>
+        } @else {
+          <form [formGroup]="loginForm" (ngSubmit)="iniciarSesion()" class="space-y-5 p-6">
+            <label class="block">
+              <span class="mb-1.5 block text-sm font-semibold text-slate-700">Correo electrónico</span>
+              <input type="email" formControlName="email" autocomplete="username" placeholder="tu@correo.com" class="w-full rounded-xl border border-stone-300 px-4 py-3 text-sm outline-none transition focus:border-teal-700 focus:ring-2 focus:ring-teal-100">
+              @if (loginForm.controls.email.touched && loginForm.controls.email.invalid) {
+                <span class="mt-1 block text-xs text-red-700">Ingresa un correo electrónico válido.</span>
+              }
+            </label>
+            <label class="block">
+              <span class="mb-1.5 block text-sm font-semibold text-slate-700">Contraseña</span>
+              <input type="password" formControlName="password" autocomplete="current-password" placeholder="Tu contraseña" class="w-full rounded-xl border border-stone-300 px-4 py-3 text-sm outline-none transition focus:border-teal-700 focus:ring-2 focus:ring-teal-100">
+              @if (loginForm.controls.password.touched && loginForm.controls.password.invalid) {
+                <span class="mt-1 block text-xs text-red-700">La contraseña es obligatoria.</span>
+              }
+            </label>
+            @if (errorLogin()) {
+              <p class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm leading-5 text-red-800" role="alert">{{ errorLogin() }}</p>
+            }
+            <div class="flex flex-col-reverse gap-3 pt-1 sm:flex-row sm:justify-end">
+              <button type="button" (click)="cerrarLogin()" [disabled]="loginEnviando()" class="rounded-xl border border-stone-300 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-stone-50 disabled:opacity-50">Cancelar</button>
+              <button type="submit" [disabled]="loginEnviando()" class="inline-flex items-center justify-center gap-2 rounded-xl bg-teal-700 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-800 disabled:cursor-wait disabled:opacity-70">
+                @if (loginEnviando()) { Verificando... } @else { Iniciar sesión }
+              </button>
+            </div>
+            <p class="text-center text-sm text-slate-600">¿No tienes cuenta? <button type="button" (click)="mostrarRegistro()" class="font-semibold text-teal-800 underline-offset-4 hover:underline">Crear cuenta</button></p>
+          </form>
+        }
+      </section>
     </div>
-  </div>
-</main>
+  }
 
-<!-- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * -->
-<!-- * * * * * * * * * * * The content above * * * * * * * * * * * * -->
-<!-- * * * * * * * * * * is only a placeholder * * * * * * * * * * * -->
-<!-- * * * * * * * * * * and can be replaced.  * * * * * * * * * * * -->
-<!-- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * -->
-<!-- * * * * * * * * * * End of Placeholder  * * * * * * * * * * * * -->
-<!-- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * -->
+  @if (atraccionParaReservar(); as atraccion) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm" (click)="cerrarModal()">
+      <section class="my-auto w-full max-w-2xl overflow-hidden rounded-3xl bg-white shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="reserva-titulo" (click)="$event.stopPropagation()">
+        <div class="flex items-start justify-between border-b border-stone-200 px-6 py-5 sm:px-8">
+          <div>
+            <p class="text-xs font-bold uppercase tracking-[0.18em] text-teal-700">Completa tu experiencia</p>
+            <h2 id="reserva-titulo" class="mt-1 text-2xl font-bold">Reserva tu lugar</h2>
+          </div>
+          <button type="button" (click)="cerrarModal()" [disabled]="reservaEnviando()" class="grid size-10 place-items-center rounded-full text-2xl text-slate-500 transition hover:bg-stone-100 hover:text-slate-900 disabled:opacity-40" aria-label="Cerrar modal">×</button>
+        </div>
 
+        <div class="grid max-h-[calc(100dvh-8rem)] overflow-y-auto md:grid-cols-[0.9fr_1.1fr]">
+          <aside class="bg-stone-50 p-6 sm:p-8">
+            <img [src]="imagenDe(atraccion)" [alt]="nombreDe(atraccion)" class="h-44 w-full rounded-2xl object-cover shadow-sm">
+            <h3 class="mt-4 text-lg font-bold">{{ nombreDe(atraccion) }}</h3>
+            <p class="mt-2 text-sm leading-6 text-slate-600">{{ descripcionDe(atraccion) }}</p>
+            <div class="mt-5 flex items-center justify-between border-t border-stone-200 pt-4 text-sm">
+              <span class="text-slate-600">Precio por persona</span>
+              <span class="font-bold text-slate-900">{{ precioDe(atraccion) }}</span>
+            </div>
+          </aside>
 
-<router-outlet />
+          <form [formGroup]="reservaForm" (ngSubmit)="confirmarReserva()" class="space-y-4 p-6 sm:p-8">
+            <label class="block">
+              <span class="mb-1.5 block text-sm font-semibold text-slate-700">Nombre completo</span>
+              <input type="text" formControlName="customer_name" autocomplete="name" placeholder="Ej. Ana Pérez" class="w-full rounded-xl border border-stone-300 px-4 py-3 text-sm outline-none transition focus:border-teal-700 focus:ring-2 focus:ring-teal-100">
+              @if (reservaForm.controls.customer_name.touched && reservaForm.controls.customer_name.invalid) {
+                <span class="mt-1 block text-xs text-red-700">Ingresa tu nombre completo (mínimo 2 caracteres).</span>
+              }
+            </label>
+            <label class="block">
+              <span class="mb-1.5 block text-sm font-semibold text-slate-700">Correo electrónico</span>
+              <input type="email" formControlName="customer_email" autocomplete="email" placeholder="tu@correo.com" class="w-full rounded-xl border border-stone-300 px-4 py-3 text-sm outline-none transition focus:border-teal-700 focus:ring-2 focus:ring-teal-100">
+              @if (reservaForm.controls.customer_email.touched && reservaForm.controls.customer_email.invalid) {
+                <span class="mt-1 block text-xs text-red-700">Ingresa un correo electrónico válido.</span>
+              }
+            </label>
+            <div class="grid grid-cols-2 gap-3">
+              <label class="block">
+                <span class="mb-1.5 block text-sm font-semibold text-slate-700">Fecha</span>
+                <input type="date" [min]="fechaMinima" formControlName="date" class="w-full rounded-xl border border-stone-300 px-3 py-3 text-sm outline-none transition focus:border-teal-700 focus:ring-2 focus:ring-teal-100">
+                @if (reservaForm.controls.date.touched && reservaForm.controls.date.invalid) {
+                  <span class="mt-1 block text-xs text-red-700">Selecciona hoy o una fecha futura.</span>
+                }
+              </label>
+              <label class="block">
+                <span class="mb-1.5 block text-sm font-semibold text-slate-700">Personas</span>
+                <input type="number" min="1" step="1" formControlName="ticket_count" class="w-full rounded-xl border border-stone-300 px-3 py-3 text-sm outline-none transition focus:border-teal-700 focus:ring-2 focus:ring-teal-100">
+                @if (reservaForm.controls.ticket_count.touched && reservaForm.controls.ticket_count.invalid) {
+                  <span class="mt-1 block text-xs text-red-700">Ingresa un entero igual o mayor que 1.</span>
+                }
+              </label>
+            </div>
+
+            <div class="rounded-xl bg-teal-50 p-4">
+              <div class="flex items-center justify-between gap-3">
+                <span class="text-sm font-semibold text-teal-900">Total a pagar</span>
+                <span class="text-xl font-bold text-teal-900">{{ totalReservaFormateado() }}</span>
+              </div>
+              <p class="mt-1 text-xs text-teal-800">{{ precioDe(atraccion) }} × {{ reservaForm.controls.ticket_count.value || 0 }} persona(s)</p>
+            </div>
+
+            @if (errorReserva()) {
+              <p class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800" role="alert">{{ errorReserva() }}</p>
+            }
+
+            <div class="flex flex-col-reverse gap-3 pt-1 sm:flex-row sm:justify-end">
+              <button type="button" (click)="cerrarModal()" [disabled]="reservaEnviando()" class="rounded-xl border border-stone-300 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-stone-50 disabled:opacity-50">Cancelar</button>
+              <button type="submit" [disabled]="reservaEnviando()" class="inline-flex items-center justify-center gap-2 rounded-xl bg-teal-700 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-800 disabled:cursor-wait disabled:opacity-70">
+                @if (reservaEnviando()) {
+                  <svg class="size-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4zm2 5.3A7.96 7.96 0 014 12H0c0 3.04 1.13 5.82 3 7.94l3-2.64z"/></svg>
+                  Procesando...
+                } @else {
+                  Confirmar reserva
+                }
+              </button>
+            </div>
+          </form>
+        </div>
+      </section>
+    </div>
+  }
+</div>
