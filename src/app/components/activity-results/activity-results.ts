@@ -1,6 +1,9 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { photosOf, locationsOf } from '../../contracts/attraction-view';
+import { httpErrorMessage } from '../../core/http-errors';
+import { Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { catchError, forkJoin, of } from 'rxjs';
+import { catchError, forkJoin, map, of, Subject, switchMap } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Atraccion, AtraccionesService } from '../../services/atracciones.service';
 import { ObservabilityService } from '../../services/observability.service';
 
@@ -13,11 +16,14 @@ type SortOption = 'featured' | 'price' | 'rating';
   templateUrl: './activity-results.html',
 })
 export class ActivityResults {
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly availabilitySearches = new Subject<{ date: string; attractions: Atraccion[] }>();
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly attractionsService = inject(AtraccionesService);
   private readonly observability = inject(ObservabilityService);
   protected readonly attractions = signal<Atraccion[]>([]);
+  protected readonly error = signal('');
   protected readonly loading = signal(true);
   protected readonly searching = signal(false);
   protected readonly availabilityLoading = signal(false);
@@ -38,9 +44,9 @@ export class ActivityResults {
     const filtered = this.attractions().filter((attraction) => {
       const city = this.cityOf(attraction);
       const searchable = this.normalize([
-        attraction.name, attraction.nombre, attraction.ciudad, attraction.region,
-        ...(attraction.locations ?? []).flatMap((location) => [location.city, location.address]),
-        attraction.long_description, attraction.descripcion,
+        attraction.name, attraction.provincia, attraction.region,
+        ...locationsOf(attraction).flatMap((location) => [location.city, location.address]),
+        attraction.long_description,
       ].filter(Boolean).join(' '));
       return (!query || searchable.includes(query) || this.normalize(this.provinceOf(attraction) ?? '').includes(query)) &&
         (!this.availableIds() || this.availableIds()!.includes(attraction.id)) &&
@@ -58,15 +64,27 @@ export class ActivityResults {
     .map((attraction) => this.cityOf(attraction)).filter(Boolean))].sort());
 
   ngOnInit(): void {
-    this.attractionsService.obtenerAtracciones().subscribe({
+    this.availabilitySearches.pipe(switchMap(({ date, attractions }) => {
+      this.availableIds.set(null); this.error.set('');
+      this.availabilityLoading.set(Boolean(date && attractions.length));
+      if (!date || !attractions.length) return of({ ids: null as string[] | null, error: '' });
+      return forkJoin(attractions.map(attraction => this.attractionsService.obtenerDisponibilidad(attraction.id, date))).pipe(
+        map(availability => ({ ids: availability.flatMap((item, index) => item.available_spots > 0 ? [attractions[index].id] : []), error: '' })),
+        catchError(error => of({ ids: null, error: httpErrorMessage(error) })),
+      );
+    }), takeUntilDestroyed(this.destroyRef)).subscribe(({ ids, error }) => {
+      this.availableIds.set(ids); this.error.set(error); this.availabilityLoading.set(false);
+    });
+
+    this.attractionsService.obtenerAtracciones().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (attractions) => {
         this.attractions.set(attractions);
         this.loading.set(false);
         this.readQuery();
       },
-      error: () => this.loading.set(false),
+      error: (error: unknown) => { this.error.set(httpErrorMessage(error)); this.loading.set(false); },
     });
-    this.route.queryParamMap.subscribe(() => this.readQuery());
+    this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.readQuery());
   }
 
   protected search(): void {
@@ -84,13 +102,13 @@ export class ActivityResults {
     this.selectedCategories.update((selected) => selected.includes(category) ? selected.filter((item) => item !== category) : [...selected, category]);
   }
   protected book(attraction: Atraccion): void { void this.router.navigate(['/actividades', attraction.id]); }
-  protected cityOf(attraction: Atraccion): string { return attraction.ciudad ?? attraction.locations?.find((location) => location.city)?.city ?? 'Ecuador'; }
-  protected nameOf(attraction: Atraccion): string { return attraction.name ?? attraction.nombre ?? 'Experiencia'; }
+  protected cityOf(attraction: Atraccion): string { return attraction.provincia ?? 'Ecuador'; }
+  protected nameOf(attraction: Atraccion): string { return attraction.name ?? 'Experiencia'; }
   protected imageOf(attraction: Atraccion): string {
-    return attraction.images?.[0]?.url ?? attraction.photos?.[0]?.url ?? 'https://images.unsplash.com/photo-1519501025264-65ba15a82390?auto=format&fit=crop&w=900&q=85';
+    return photosOf(attraction)[0]?.url ?? 'https://images.unsplash.com/photo-1519501025264-65ba15a82390?auto=format&fit=crop&w=900&q=85';
   }
   protected priceLabel(attraction: Atraccion): string {
-    if (attraction.price?.total == null && attraction.precioTicket == null) return 'Consultar precio';
+    if (attraction.price?.total == null && attraction.precioBase == null) return 'Consultar precio';
     return new Intl.NumberFormat('es-EC', { style: 'currency', currency: attraction.price?.currency ?? 'USD' }).format(this.price(attraction));
   }
   protected ratingLabel(attraction: Atraccion): string {
@@ -99,7 +117,7 @@ export class ActivityResults {
   }
   protected ratingDescription(attraction: Atraccion): string {
     const score = Number(attraction.ratings?.score ?? 0);
-    return score >= 8.5 ? 'Muy bien' : score > 0 ? 'Bien' : 'Sin comentarios';
+    return score > 0 ? 'Rating de atraccion (API)' : 'Sin rating';
   }
   protected categoryOf(attraction: Atraccion): string {
     const text = this.normalize([attraction.product_type, ...(attraction.categories ?? []), attraction.name, attraction.long_description].filter(Boolean).join(' '));
@@ -109,10 +127,9 @@ export class ActivityResults {
   }
   protected durationOf(attraction: Atraccion): string {
     if (attraction.duration) return attraction.duration.replace(/^PT/i, '').replace('H', ' h ').replace('M', ' min').trim();
-    const hours = Number(attraction.duracionHoras ?? 0);
-    return hours ? `${hours} ${hours === 1 ? 'hora' : 'horas'}` : 'Duración variable';
+    return 'Duración variable';
   }
-  private price(attraction: Atraccion): number { return Number(attraction.price?.total ?? attraction.precioTicket ?? 0); }
+  private price(attraction: Atraccion): number { return Number(attraction.price?.total ?? attraction.precioBase ?? 0); }
 
   private readQuery(): void {
     const params = this.route.snapshot.queryParamMap;
@@ -120,22 +137,13 @@ export class ActivityResults {
     this.searchText.set(params.get('destino') ?? '');
     const date = params.get('fecha') ?? '';
     this.date.set(date);
-    this.availableIds.set(null);
-    if (!date || this.attractions().length === 0) return;
-    const attractions = this.attractions();
-    const requests = attractions.map((attraction) => this.attractionsService.obtenerDisponibilidad(attraction.id, date).pipe(catchError(() => of(null))));
-    if (!requests.length) { this.availableIds.set([]); return; }
-    this.availabilityLoading.set(true);
-    forkJoin(requests).subscribe((availability) => {
-      this.availableIds.set(availability.flatMap((item, index) => item && item.available_spots > 0 ? [attractions[index].id] : []));
-      this.availabilityLoading.set(false);
-    });
+    this.availabilitySearches.next({ date, attractions: this.attractions() });
   }
 
   private provinceOf(attraction: Atraccion): string | null {
     if (attraction.provincia?.trim()) return attraction.provincia.trim();
-    const text = this.normalize([attraction.provincia, attraction.region, attraction.ciudad, attraction.name, attraction.nombre,
-      ...(attraction.locations ?? []).flatMap((location) => [location.city, location.address])].filter(Boolean).join(' '));
+    const text = this.normalize([attraction.provincia, attraction.region, attraction.name,
+      ...locationsOf(attraction).flatMap((location) => [location.city, location.address])].filter(Boolean).join(' '));
     const province = this.provinceNames.find((name) => text.includes(this.normalize(name)));
     if (province) return province;
     const cityToProvince: Record<string, string> = {

@@ -1,0 +1,106 @@
+<section class="my-6 rounded-2xl border border-stone-200 bg-white p-6" aria-labelledby="attraction-form-title">
+  <h3 id="attraction-form-title" class="text-xl font-bold">{{ attraction() ? 'Editar atracción' : 'Crear atracción' }}</h3>
+  <p class="mt-2 text-sm text-slate-600">El formulario envía el DTO de atracción. Los paquetes reservables no se editan aquí: no hay contrato ADMIN para crearlos.</p>
+  <form [formGroup]="form" (ngSubmit)="submit()" class="mt-4 space-y-4" novalidate>
+    <label class="block">
+      <span class="mb-1 block text-sm font-semibold">Nombre</span>
+      <input formControlName="name" class="block w-full rounded-lg border border-stone-300 p-2 focus-visible:outline-2 focus-visible:outline-teal-700" [attr.aria-invalid]="form.controls.name.touched && form.controls.name.invalid" aria-describedby="name-help">
+    </label>
+    <p id="name-help" class="text-sm text-slate-600">Mínimo 3 caracteres.</p>
+    @if (form.controls.name.touched && form.controls.name.invalid) {
+      <p class="text-sm text-red-700" role="alert">El nombre es obligatorio y debe tener al menos 3 caracteres.</p>
+    }
+
+    <label class="block">
+      <span class="mb-1 block text-sm font-semibold">Descripción</span>
+      <textarea formControlName="long_description" rows="3" class="block w-full rounded-lg border border-stone-300 p-2 focus-visible:outline-2 focus-visible:outline-teal-700" [attr.aria-invalid]="form.controls.long_description.touched && form.controls.long_description.invalid" aria-describedby="description-help"></textarea>
+    </label>
+    <p id="description-help" class="text-sm text-slate-600">Mínimo 10 caracteres.</p>
+    @if (form.controls.long_description.touched && form.controls.long_description.invalid) {
+      <p class="text-sm text-red-700" role="alert">La descripción es obligatoria y debe tener al menos 10 caracteres.</p>
+    }
+
+    <label class="block">
+      <span class="mb-1 block text-sm font-semibold">Duración (ISO 8601)</span>
+      <input formControlName="duration" placeholder="PT2H" class="block w-full rounded-lg border border-stone-300 p-2 focus-visible:outline-2 focus-visible:outline-teal-700">
+    </label>
+
+    <label class="block">
+      <span class="mb-1 block text-sm font-semibold">Modalidad</span>
+      <select formControlName="product_type" class="block w-full rounded-lg border border-stone-300 p-2 focus-visible:outline-2 focus-visible:outline-teal-700">
+        @for (type of productTypes; track type) {
+          <option [value]="type">{{ type }}</option>
+        }
+      </select>
+    </label>
+
+    <label class="block">
+      <span class="mb-1 block text-sm font-semibold">Incluye (una opción por línea)</span>
+      <textarea formControlName="includes" class="block w-full rounded-lg border border-stone-300 p-2 focus-visible:outline-2 focus-visible:outline-teal-700"></textarea>
+    </label>
+    <label class="block">
+      <span class="mb-1 block text-sm font-semibold">Categorías (una por línea)</span>
+      <textarea formControlName="categories" class="block w-full rounded-lg border border-stone-300 p-2 focus-visible:outline-2 focus-visible:outline-teal-700"></textarea>
+    </label>
+    <label class="block">
+      <span class="mb-1 block text-sm font-semibold">Idiomas soportados (uno por línea)</span>
+      <textarea formControlName="supported_languages" class="block w-full rounded-lg border border-stone-300 p-2 focus-visible:outline-2 focus-visible:outline-teal-700"></textarea>
+    </label>
+    <label class="block">
+      <span class="mb-1 block text-sm font-semibold">Fotos (una URL por línea)</span>
+      <textarea formControlName="photos" class="block w-full rounded-lg border border-stone-300 p-2 focus-visible:outline-2 focus-visible:outline-teal-700" [attr.aria-invalid]="form.controls.photos.touched && form.controls.photos.invalid"></textarea>
+    </label>
+    @if (form.controls.photos.touched && form.controls.photos.invalid) {
+      <p class="text-sm text-red-700" role="alert">Cada foto debe ser una URL http, https o ftp.</p>
+    }
+
+    <label class="flex items-center gap-2">
+      <input type="checkbox" formControlName="free_cancellation">
+      <span>Cancelación gratuita</span>
+    </label>
+    <label class="flex items-center gap-2">
+      <input type="checkbox" formControlName="priceEnabled">
+      <span>Incluir precio base informativo</span>
+    </label>
+    @if (form.controls.priceEnabled.value) {
+      <div class="grid gap-3 sm:grid-cols-2">
+        <label>
+          <span class="mb-1 block text-sm font-semibold">Moneda</span>
+          <input formControlName="currency" class="block w-full rounded-lg border border-stone-300 p-2 focus-visible:outline-2 focus-visible:outline-teal-700">
+        </label>
+        <label>
+          <span class="mb-1 block text-sm font-semibold">Precio base</span>
+          <input type="number" step="any" formControlName="total" class="block w-full rounded-lg border border-stone-300 p-2 focus-visible:outline-2 focus-visible:outline-teal-700">
+        </label>
+      </div>
+    }
+    <p class="text-sm text-slate-600">El precio base del DTO es informativo. No sustituye el precio ni las políticas de los paquetes reservables.</p>
+
+    <div formArrayName="locations">
+      <h4 class="font-semibold">Ubicaciones</h4>
+      @for (location of form.controls.locations.controls; track location; let i = $index) {
+        <fieldset [formGroupName]="i" class="my-3 grid gap-3 rounded-xl border border-stone-200 p-3 sm:grid-cols-2">
+          <legend class="px-1 text-sm font-semibold">Ubicación {{ i + 1 }}</legend>
+          <label>Dirección<input formControlName="address" class="mt-1 block w-full rounded-lg border border-stone-300 p-2 focus-visible:outline-2 focus-visible:outline-teal-700"></label>
+          <label>Ciudad (ID numérico)<input type="number" step="1" formControlName="city" class="mt-1 block w-full rounded-lg border border-stone-300 p-2 focus-visible:outline-2 focus-visible:outline-teal-700"></label>
+          <label>País<input formControlName="country" class="mt-1 block w-full rounded-lg border border-stone-300 p-2 focus-visible:outline-2 focus-visible:outline-teal-700"></label>
+          <label>Tipo (opcional)<input formControlName="type" class="mt-1 block w-full rounded-lg border border-stone-300 p-2 focus-visible:outline-2 focus-visible:outline-teal-700"></label>
+          <label>Latitud<input type="number" step="any" min="-90" max="90" formControlName="latitude" class="mt-1 block w-full rounded-lg border border-stone-300 p-2 focus-visible:outline-2 focus-visible:outline-teal-700"></label>
+          <label>Longitud<input type="number" step="any" min="-180" max="180" formControlName="longitude" class="mt-1 block w-full rounded-lg border border-stone-300 p-2 focus-visible:outline-2 focus-visible:outline-teal-700"></label>
+          <button type="button" [disabled]="sending()" (click)="removeLocation(i)" class="rounded-lg border border-stone-300 p-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700">Quitar ubicación</button>
+        </fieldset>
+      }
+      <button type="button" [disabled]="sending()" (click)="addLocation()" class="rounded-lg border border-stone-300 px-3 py-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700">Agregar ubicación</button>
+    </div>
+
+    @if (error()) {
+      <p role="alert" class="text-red-700">{{ error() }}</p>
+    }
+    <div class="flex flex-wrap gap-3">
+      <button type="submit" [disabled]="sending()" [attr.aria-busy]="sending()" class="rounded-xl bg-teal-700 px-4 py-2 text-white disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700">
+        {{ sending() ? 'Guardando...' : 'Guardar atracción' }}
+      </button>
+      <button type="button" [disabled]="sending()" (click)="cancelled.emit()" class="rounded-xl border border-stone-300 px-4 py-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700">Volver</button>
+    </div>
+  </form>
+</section>

@@ -1,14 +1,19 @@
+import { ReservationDetail } from './components/reservation-detail/reservation-detail';
+import { ReservationRequest, ReservationResponse } from './contracts/atracciones.contracts';
+import { photosOf, locationsOf } from './contracts/attraction-view';
+import { httpErrorMessage } from './core/http-errors';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { AbstractControl, FormControl, FormGroup, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { AuthService } from './services/auth.service';
 import { AtraccionesService, Atraccion, ProductType } from './services/atracciones.service';
-import { CrearReservaDto, ReservaCreada, ReservaUsuario, ReservasService } from './services/reservas.service';
+import { ReservasService } from './services/reservas.service';
 import { ToastService } from './services/toast.service';
 import { ToastContainer } from './toast-container';
 import { ObservabilityService } from './services/observability.service';
 import { filter } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { BookingNavigationService, BookingSelection } from './services/booking-navigation.service';
 import { creditCardAsyncValidator, ecuadorianIdAsyncValidator } from './utils/async-validators';
 
@@ -41,19 +46,29 @@ interface RegionCard { id: Exclude<Region, 'TODAS'>; name: string; description: 
 interface DestinationCard { name: string; region: Exclude<Region, 'TODAS'>; image: string; aliases: string[]; }
 interface ProvinceCard { name: string; image: string; }
 interface VoucherData {
-  reservation: ReservaCreada;
+  reservation: ReservationResponse;
   attraction: Atraccion;
   customerName: string;
   date: string;
 }
 
 @Component({
-  imports: [ReactiveFormsModule, ToastContainer, RouterLink, RouterOutlet],
+  imports: [ReactiveFormsModule, ToastContainer, RouterLink, RouterOutlet, ReservationDetail],
   selector: 'app-root',
   styleUrl: './app.scss',
   templateUrl: './app.html',
 })
 export class App {
+  protected readonly photosOf = photosOf;
+  private catalogoSolicitado = false;
+  private checkoutKey = '';
+  private submittedRequest: ReservationRequest | null = null;
+  protected readonly checkoutLocked = signal(false);
+  protected readonly checkoutBlocked = signal(false);
+  protected readonly refreshingCheckoutAvailability = signal(false);
+  protected readonly checkoutAvailabilityMessage = signal('');
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly cancellationKeys = new Map<string, string>();
   protected readonly authService = inject(AuthService);
   private readonly atraccionesService = inject(AtraccionesService);
   private readonly reservasService = inject(ReservasService);
@@ -72,7 +87,6 @@ export class App {
   private readonly atraccionPendienteDeReserva = signal<Atraccion | null>(null);
   private readonly seleccionPendiente = signal<BookingSelection | null>(null);
   private readonly seleccionActiva = signal<BookingSelection | null>(null);
-  private readonly tipoExperienciaReserva = signal<ProductType | null>(null);
   protected readonly atracciones = signal<Atraccion[]>([]);
   protected readonly terminoBusqueda = signal('');
   protected readonly fechaBusqueda = signal('');
@@ -92,16 +106,17 @@ export class App {
   protected readonly atraccionParaReservar = signal<Atraccion | null>(null);
   protected readonly reservaConfirmada = signal<VoucherData | null>(null);
   protected readonly reservaEnviando = signal(false);
-  protected readonly reservaPaso = signal<-1 | 0 | 1 | 2>(-1);
+  protected readonly reservaPaso = signal<1 | 2>(1);
   protected readonly metodoPago = signal<'tarjeta' | 'paypal'>('tarjeta');
   protected readonly errorReserva = signal('');
   protected readonly vistaActual = signal<'catalogo' | 'reservas'>(['/reservas', '/historial'].includes(this.router.url.split('?')[0]) ? 'reservas' : 'catalogo');
-  protected readonly misReservas = signal<ReservaUsuario[]>([]);
+  protected readonly misReservas = signal<ReservationResponse[]>([]);
   protected readonly codigoCopiado = signal<string | null>(null);
   protected readonly cargandoReservas = signal(false);
   protected readonly errorReservas = signal('');
-  protected readonly reservaPorCancelar = signal<ReservaUsuario | null>(null);
-  protected readonly reservaParaQr = signal<ReservaUsuario | null>(null);
+  protected readonly reservaPorCancelar = signal<ReservationResponse | null>(null);
+  protected readonly detalleReservaId = signal<string | null>(null);
+  protected readonly errorCancelacion = signal('');
   protected readonly cancelandoReserva = signal(false);
   protected readonly fechaMinima = fechaLocalActual();
   protected readonly categoriasExperiencia = [
@@ -162,7 +177,7 @@ export class App {
     const term = this.normalizarTexto(this.terminoBusqueda().trim());
     if (term.length < 2) return [];
     return this.atracciones().filter((atraccion) => {
-      const content = this.normalizarTexto(`${this.nombreDe(atraccion)} ${atraccion.ciudad ?? ''} ${this.descripcionDe(atraccion)}`);
+      const content = this.normalizarTexto(`${this.nombreDe(atraccion)} ${atraccion.provincia ?? ''} ${this.descripcionDe(atraccion)}`);
       return content.includes(term);
     }).slice(0, 5);
   });
@@ -171,8 +186,9 @@ export class App {
     password: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
   });
   protected readonly registerForm = new FormGroup({
-    name: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.minLength(2)] }),
-    email: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.email] }),
+    name: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.minLength(2), Validators.maxLength(120)] }),
+    cedula_dni: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.pattern(/^\d{10}$/)], asyncValidators: [ecuadorianIdAsyncValidator()] }),
+    email: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.email, Validators.maxLength(255)] }),
     password: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.minLength(8), Validators.maxLength(72)] }),
   });
   protected readonly reservaForm = new FormGroup({
@@ -187,11 +203,7 @@ export class App {
     card_expiry: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.pattern(/^(0[1-9]|1[0-2])\/\d{2}$/), caducidadTarjetaNoPasada] }),
     card_cvc: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.pattern(/^\d{3}$/)] }),
     date: new FormControl(this.fechaMinima, { nonNullable: true, validators: [Validators.required, fechaNoPasada] }),
-    time: new FormControl('10:00', { nonNullable: true, validators: [Validators.required] }),
-    ticket_count: new FormControl(1, {
-      nonNullable: true,
-      validators: [Validators.required, Validators.min(1), Validators.pattern(/^[1-9]\d*$/)],
-    }),
+
   });
   protected readonly atraccionesFiltradas = computed(() => {
     const term = this.normalizarTexto(this.terminoBusqueda().trim());
@@ -200,8 +212,8 @@ export class App {
     const maxPrice = this.precioMaximo();
     const resultado = this.atracciones().filter((atraccion) => {
       const texto = this.normalizarTexto([
-        this.nombreDe(atraccion), this.descripcionDe(atraccion), atraccion.provincia, atraccion.region, atraccion.ciudad,
-        ...(atraccion.categories ?? []), ...(atraccion.locations ?? []).flatMap((location) => [location.city, location.address]),
+        this.nombreDe(atraccion), this.descripcionDe(atraccion), atraccion.provincia, atraccion.region,
+        ...(atraccion.categories ?? []), ...locationsOf(atraccion).flatMap((location) => [location.city, location.address]),
       ].filter(Boolean).join(' '));
       return (!term || texto.includes(term) || this.normalizarTexto(this.provinciaDe(atraccion) ?? '').includes(term)) &&
         (!this.provinciaSeleccionada() || this.provinciaDe(atraccion) === this.provinciaSeleccionada()) &&
@@ -223,7 +235,7 @@ export class App {
 
   ngOnInit(): void {
     if (['/reservas', '/historial'].includes(this.router.url.split('?')[0])) this.cargarMisReservas();
-    this.router.events.pipe(filter((event) => event instanceof NavigationEnd)).subscribe((event) => {
+    this.router.events.pipe(filter((event) => event instanceof NavigationEnd), takeUntilDestroyed(this.destroyRef)).subscribe((event) => {
       const path = (event as NavigationEnd).urlAfterRedirects.split('?')[0];
       const esHistorial = path === '/reservas' || path === '/historial';
       this.rutaResultados.set(path !== '/' && !esHistorial);
@@ -233,11 +245,11 @@ export class App {
       } else if (path === '/') {
         this.vistaActual.set('catalogo');
         this.provinciaSeleccionada.set(null);
+        this.cargarCatalogo();
       }
     });
-    this.bookingNavigation.bookingRequested$.subscribe(({ attraction, selection }) => {
+    this.bookingNavigation.bookingRequested$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(({ attraction, selection }) => {
       if (selection) {
-        this.tipoExperienciaReserva.set(selection.product_type);
         this.seleccionActiva.set(selection);
         this.seleccionPendiente.set(selection);
         if (!this.authService.isLoggedIn()) {
@@ -248,34 +260,40 @@ export class App {
         }
       } else this.reservar(attraction);
     });
-    this.atraccionesService.obtenerAtracciones().subscribe({
+    if (this.router.url === '/' && location.pathname === '/') this.cargarCatalogo();
+  }
+
+  private cargarCatalogo(): void {
+    if (this.catalogoSolicitado) return;
+    this.catalogoSolicitado = true;
+    this.cargando.set(true);
+    this.atraccionesService.obtenerAtracciones().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (atracciones) => {
         this.atracciones.set(atracciones);
         this.cargando.set(false);
       },
-      error: () => {
-        this.error.set('No pudimos cargar las atracciones. Comprueba que el API esté disponible e inténtalo de nuevo.');
+      error: (error: unknown) => {
+        this.error.set(httpErrorMessage(error));
         this.cargando.set(false);
       },
     });
   }
 
   protected imagenDe(atraccion: Atraccion): string {
-    return atraccion.images?.[0]?.url ?? atraccion.photos?.[0]?.url ??
+    return photosOf(atraccion)[0]?.url ??
       'https://images.unsplash.com/photo-1519501025264-65ba15a82390?auto=format&fit=crop&w=900&q=80';
   }
 
   protected nombreDe(atraccion: Atraccion): string {
-    return atraccion.name ?? atraccion.nombre ?? 'Atracción';
+    return atraccion.name ?? 'Atracción';
   }
 
   protected descripcionDe(atraccion: Atraccion): string {
-    return atraccion.long_description ?? atraccion.descripcion ?? 'Descubre una experiencia inolvidable.';
+    return atraccion.long_description ?? 'Descubre una experiencia inolvidable.';
   }
 
   protected duracionDe(atraccion: Atraccion): string {
-    const hoursFromField = Number(atraccion.duracionHoras ?? 0);
-    const hours = hoursFromField > 0 ? hoursFromField : Number(atraccion.duration?.match(/PT(?:(\d+)H)?/i)?.[1] ?? 0);
+    const hours = Number(atraccion.duration?.match(/PT(?:(\d+)H)?/i)?.[1] ?? 0);
     const minutes = Number(atraccion.duration?.match(/PT(?:\d+H)?(?:(\d+)M)/i)?.[1] ?? 0);
     if (hours >= 7) return 'Full Day';
     if (hours === 0 && minutes === 0) return 'Duración variable';
@@ -294,33 +312,19 @@ export class App {
     const badges = (atraccion.badges ?? []).map((badge) => badge.toLocaleLowerCase());
     return atraccion.free_cancellation || badges.includes('free_cancellation')
       ? 'Cancelación gratuita'
-      : 'Confirmación inmediata';
+      : 'Ver disponibilidad';
   }
 
   protected precioDe(atraccion: Atraccion): string {
-    const total = atraccion.price?.total ?? atraccion.precioTicket;
+    const total = atraccion.price?.total ?? atraccion.precioBase;
     if (total == null) return 'Consultar precio';
     return new Intl.NumberFormat('es-EC', {
       style: 'currency', currency: atraccion.price?.currency ?? 'USD', maximumFractionDigits: 2,
     }).format(total);
   }
 
-  protected nombrePaquete(atraccion: Atraccion): string {
-    if (atraccion.product_type === 'GUIDED_TOUR') return 'Tour guiado';
-    if (atraccion.product_type === 'PACKAGE') return 'Paquete completo';
-    return 'Entrada general';
-  }
-
   protected reservar(atraccion: Atraccion): void {
-    this.observability.track('click', 'reserve_click', { attractionId: atraccion.id });
-    this.errorReserva.set('');
-    if (!this.authService.isLoggedIn()) {
-      this.atraccionPendienteDeReserva.set(atraccion);
-      this.abrirLogin();
-      return;
-    }
-
-    this.abrirReserva(atraccion);
+    void this.router.navigate(['/actividades', atraccion.id]);
   }
 
   protected abrirLogin(): void {
@@ -351,14 +355,17 @@ export class App {
     if (this.loginEnviando()) return;
     this.loginModalAbierto.set(false);
     this.atraccionPendienteDeReserva.set(null);
+    this.seleccionPendiente.set(null);
     this.errorLogin.set('');
   }
 
   protected cerrarSesion(): void {
     this.observability.track('auth', 'logout');
+    this.cerrarModal();
     this.authService.logout();
     this.vistaActual.set('catalogo');
     this.misReservas.set([]);
+    this.detalleReservaId.set(null); this.reservaPorCancelar.set(null); this.cancellationKeys.clear();
     this.toastService.mostrar('info', 'Has cerrado sesión correctamente.');
   }
 
@@ -372,14 +379,33 @@ export class App {
     if (!this.autenticado() || this.cargandoReservas()) return;
     this.cargandoReservas.set(true);
     this.errorReservas.set('');
-    this.reservasService.obtenerMisReservas().subscribe({
+    this.reservasService.obtenerMisReservas().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (reservas) => { this.misReservas.set(reservas); this.cargandoReservas.set(false); },
       error: (error: unknown) => {
         this.cargandoReservas.set(false);
-        if (error instanceof HttpErrorResponse && error.status === 401) this.authService.logout();
-        this.errorReservas.set('No pudimos cargar tus reservas. Inténtalo nuevamente.');
+        if (error instanceof HttpErrorResponse && error.status === 401) { this.authService.logout(); this.abrirLogin(); }
+        this.errorReservas.set(httpErrorMessage(error));
       },
     });
+  }
+
+  protected iniciarCancelacion(reserva: ReservationResponse): void {
+    if (this.cancelandoReserva() || reserva.status === 'CANCELADA') return;
+    if (this.reservaPorCancelar()?.reservation_id === reserva.reservation_id) return;
+    this.errorCancelacion.set('');
+    this.cancellationKeys.set(reserva.reservation_id, crypto.randomUUID());
+    this.reservaPorCancelar.set(reserva);
+  }
+  protected cerrarCancelacion(): void {
+    if (this.cancelandoReserva()) return;
+    const id = this.reservaPorCancelar()?.reservation_id;
+    if (id) this.cancellationKeys.delete(id);
+    this.reservaPorCancelar.set(null);
+    this.errorCancelacion.set('');
+  }
+  private cancellationKey(id: string): string {
+    if (!this.cancellationKeys.has(id)) this.cancellationKeys.set(id, crypto.randomUUID());
+    return this.cancellationKeys.get(id)!;
   }
 
   protected fechaReserva(fecha: string): string {
@@ -387,7 +413,7 @@ export class App {
     return Number.isNaN(date.getTime()) ? fecha : new Intl.DateTimeFormat('es-EC', { dateStyle: 'long' }).format(date);
   }
 
-  protected totalReservaDe(reserva: ReservaUsuario): string {
+  protected totalReservaDe(reserva: ReservationResponse): string {
     return new Intl.NumberFormat('es-EC', { style: 'currency', currency: reserva.total_price?.currency ?? 'USD' }).format(reserva.total_price?.total ?? 0);
   }
 
@@ -408,26 +434,29 @@ export class App {
     }
   }
 
-  protected mostrarQrReserva(reserva: ReservaUsuario): void {
-    this.reservaParaQr.set(reserva);
-  }
-
   protected confirmarCancelacion(): void {
     const reserva = this.reservaPorCancelar();
-    if (!reserva || this.cancelandoReserva()) return;
+    if (!reserva || this.cancelandoReserva() || reserva.status === 'CANCELADA') return;
+    this.errorCancelacion.set('');
     this.cancelandoReserva.set(true);
-    this.reservasService.cancelarReserva(reserva.reservation_id).subscribe({
-      next: () => {
+    this.reservasService.cancelarReserva(reserva.reservation_id, this.cancellationKey(reserva.reservation_id)).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (response) => {
+        this.misReservas.update(items => items.map(item => item.reservation_id === response.reservation_id ? response : item));
+        this.detalleReservaId.set(null);
         this.cancelandoReserva.set(false);
+        this.cancellationKeys.delete(reserva.reservation_id);
         this.reservaPorCancelar.set(null);
         this.toastService.mostrar('exito', 'La reserva se canceló correctamente.');
         this.cargarMisReservas();
       },
-      error: () => {
+      error: (error: unknown) => {
         this.cancelandoReserva.set(false);
-        this.errorReservas.set('No pudimos cancelar la reserva. Inténtalo nuevamente.');
-        this.toastService.mostrar('error', 'No pudimos cancelar la reserva. Inténtalo nuevamente.');
-        this.reservaPorCancelar.set(null);
+        if (error instanceof HttpErrorResponse && error.status === 401) { this.authService.logout(); this.abrirLogin(); }
+        const message = error instanceof HttpErrorResponse && error.status === 409
+          ? (error.error?.code === 'IDEMPOTENCY_KEY_REUSED' ? 'La clave de cancelacion ya pertenece a otra operacion. Revisa la reserva.' : httpErrorMessage(error))
+          : httpErrorMessage(error);
+        this.errorCancelacion.set(message);
+        this.toastService.mostrar('error', message);
       },
     });
   }
@@ -439,7 +468,7 @@ export class App {
     this.loginEnviando.set(true);
     this.observability.track('auth', 'login_attempt');
     this.errorLogin.set('');
-    this.authService.login(this.loginForm.getRawValue()).subscribe({
+    this.authService.login(this.loginForm.getRawValue()).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (usuario) => this.completarAutenticacion(usuario),
       error: (error: unknown) => {
         this.loginEnviando.set(false);
@@ -452,12 +481,12 @@ export class App {
 
   protected registrarse(): void {
     this.registerForm.markAllAsTouched();
-    if (this.registerForm.invalid || this.loginEnviando()) return;
+    if (this.registerForm.invalid || this.registerForm.pending || this.loginEnviando()) return;
 
     this.loginEnviando.set(true);
     this.observability.track('auth', 'registration_attempt');
     this.errorLogin.set('');
-    this.authService.register(this.registerForm.getRawValue()).subscribe({
+    this.authService.register(this.registerForm.getRawValue()).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (usuario) => this.completarAutenticacion(usuario),
       error: (error: unknown) => {
         this.loginEnviando.set(false);
@@ -474,74 +503,53 @@ export class App {
     this.loginModalAbierto.set(false);
     this.modoRegistro.set(false);
     this.loginForm.reset({ email: usuario.email, password: '' });
+    if (this.vistaActual() === 'reservas') this.cargarMisReservas();
     this.toastService.mostrar('exito', 'Sesión iniciada correctamente. ¡Bienvenido!');
     const atraccion = this.atraccionPendienteDeReserva();
     this.atraccionPendienteDeReserva.set(null);
     const seleccion = this.seleccionPendiente();
     this.seleccionPendiente.set(null);
-    if (atraccion) this.abrirReserva(atraccion, seleccion ?? undefined);
+    if (atraccion && this.atraccionParaReservar()?.id !== atraccion.id) this.abrirReserva(atraccion, seleccion ?? undefined);
   }
 
   private abrirReserva(atraccion: Atraccion, seleccion?: BookingSelection): void {
-    this.observability.track('modal', 'booking_modal_opened', { attractionId: atraccion.id });
+    if (!seleccion) { this.reservar(atraccion); return; }
+    this.checkoutKey = crypto.randomUUID();
+    this.submittedRequest = null; this.checkoutLocked.set(false); this.checkoutBlocked.set(false);
+    this.checkoutAvailabilityMessage.set(''); this.refreshingCheckoutAvailability.set(false); this.errorReserva.set('');
+    this.reservaForm.enable();
+    this.seleccionActiva.set(structuredClone(seleccion));
     this.reservaForm.reset({
-      customer_name: this.usuario()?.name ?? '',
-      first_name: this.usuario()?.name?.split(' ')[0] ?? '',
-      last_name: this.usuario()?.name?.split(' ').slice(1).join(' ') ?? '',
-      customer_email: this.usuario()?.email ?? '',
-      identity_number: '',
-      phone: '',
-      cardholder: '', card_number: '', card_expiry: '', card_cvc: '',
-      date: seleccion?.date ?? this.fechaMinima,
-      time: seleccion?.time ?? '10:00',
-      ticket_count: seleccion?.ticket_count ?? 1,
+      customer_name: this.usuario()?.name ?? '', first_name: this.usuario()?.name?.split(' ')[0] ?? '',
+      last_name: this.usuario()?.name?.split(' ').slice(1).join(' ') ?? '', customer_email: this.usuario()?.email ?? '',
+      identity_number: '', phone: '', cardholder: '', card_number: '', card_expiry: '', card_cvc: '', date: seleccion.date,
     });
     this.seleccionarMetodoPago('tarjeta');
-    this.reservaPaso.set(seleccion ? 1 : -1);
-    this.tipoExperienciaReserva.set(seleccion?.product_type ?? null);
-    this.seleccionActiva.set(seleccion ?? null);
-    this.atraccionParaReservar.set(atraccion);
+    this.reservaPaso.set(1); this.atraccionParaReservar.set(atraccion);
+  }
+
+  private limpiarPagoTemporal(): void {
+    for (const field of ['card_number', 'card_cvc', 'card_expiry', 'cardholder'] as const) this.reservaForm.controls[field].reset();
   }
 
   protected cerrarModal(): void {
     if (this.reservaEnviando()) return;
-    this.atraccionParaReservar.set(null);
-    this.errorReserva.set('');
+    this.limpiarPagoTemporal(); this.submittedRequest = null; this.checkoutKey = '';
+    this.checkoutLocked.set(false); this.checkoutBlocked.set(false); this.refreshingCheckoutAvailability.set(false);
+    this.atraccionParaReservar.set(null); this.seleccionActiva.set(null); this.errorReserva.set('');
   }
 
-  protected totalReserva(): number {
-    const atraccion = this.atraccionParaReservar();
-    const cantidad = Number(this.reservaForm.controls.ticket_count.value) || 0;
-    const seleccion = this.seleccionActiva();
-    if (seleccion) {
-      if (seleccion.product_type === 'GUIDED_TOUR') {
-        return Math.floor(seleccion.adult_count / 2) * 57 + (seleccion.adult_count % 2) * 50;
-      }
-      return atraccion ? this.precioPaquete(atraccion, seleccion.product_type) * seleccion.adult_count : seleccion.checkout_total;
-    }
-    return (atraccion ? this.precioPaquete(atraccion, this.tipoExperienciaReserva() ?? atraccion.product_type ?? 'SINGLE_TICKET') : 0) * cantidad;
+  protected editarSeleccion(): void {
+    if (this.reservaEnviando() || this.checkoutLocked()) return;
+    const id = this.atraccionParaReservar()?.id;
+    this.cerrarModal();
+    if (id) void this.router.navigate(['/actividades', id]);
   }
 
-  protected desgloseParticipantesCheckout(): string | null {
-    const seleccion = this.seleccionActiva();
-    if (!seleccion) return null;
-    return `${seleccion.adult_count} adulto(s) pagante(s) + ${seleccion.child_count} niño(s) sin costo`;
-  }
-
-  protected tieneDesgloseParticipantes(): boolean { return this.seleccionActiva() !== null; }
-
-  protected desgloseTourCheckout(): string | null {
-    const seleccion = this.seleccionActiva();
-    if (!seleccion || seleccion.product_type !== 'GUIDED_TOUR') return null;
-    const parejas = Math.floor(seleccion.adult_count / 2);
-    const impar = seleccion.adult_count % 2;
-    return `${parejas} pareja(s) × $57.00${impar ? ' + 1 persona × $50.00' : ''} = ${this.totalReservaFormateado()}`;
-  }
-
-  protected precioPaqueteFormateado(atraccion: Atraccion): string {
-    return new Intl.NumberFormat('es-EC', {
-      style: 'currency', currency: atraccion.package_prices?.[this.tipoExperienciaReserva() ?? atraccion.product_type ?? 'SINGLE_TICKET']?.currency ?? atraccion.price?.currency ?? 'USD', maximumFractionDigits: 2,
-    }).format(this.precioPaquete(atraccion, this.tipoExperienciaReserva() ?? atraccion.product_type ?? 'SINGLE_TICKET'));
+  protected seleccionCheckout(): BookingSelection | null { return this.seleccionActiva(); }
+  protected desgloseParticipantesCheckout(): string {
+    const selection = this.seleccionActiva();
+    return selection ? `${selection.num_adultos} adultos + ${selection.ninos.length} ni\u00f1os` : '';
   }
 
   protected filtrarDigitos(event: Event, maxDigits: number, control: 'identity_number' | 'phone' | 'card_number' | 'card_cvc'): void {
@@ -567,6 +575,7 @@ export class App {
   }
 
   protected seleccionarMetodoPago(metodo: 'tarjeta' | 'paypal'): void {
+    if (this.checkoutLocked()) return;
     this.metodoPago.set(metodo);
     const camposTarjeta = [this.reservaForm.controls.cardholder, this.reservaForm.controls.card_number, this.reservaForm.controls.card_expiry, this.reservaForm.controls.card_cvc];
     for (const campo of camposTarjeta) {
@@ -582,6 +591,7 @@ export class App {
       this.reservaForm.controls.card_cvc.setValidators([Validators.required, Validators.pattern(/^\d{3}$/)]);
       camposTarjeta.forEach((campo) => campo.updateValueAndValidity());
     } else {
+      this.limpiarPagoTemporal();
       this.reservaForm.controls.card_number.clearAsyncValidators();
       this.reservaForm.controls.card_number.updateValueAndValidity();
     }
@@ -593,6 +603,7 @@ export class App {
   }
 
   protected pagoCheckoutInvalido(): boolean {
+    if (this.submittedRequest) return false;
     return !this.reservaForm.controls.identity_number.valid ||
       (this.metodoPago() === 'tarjeta' && (
         !this.reservaForm.controls.cardholder.valid ||
@@ -611,30 +622,8 @@ export class App {
     }, 0);
   }
 
-  private precioPaquete(atraccion: Atraccion, tipo: ProductType): number {
-    const base = this.precioUnitario(atraccion);
-    const multiplicador: Record<ProductType, number> = { SINGLE_TICKET: 1, GUIDED_TOUR: 1.5, PACKAGE: 2 };
-    const configurado = atraccion.package_prices ?? {};
-    const basico = Number(configurado.SINGLE_TICKET?.total ?? base);
-    const guiado = Math.max(Number(configurado.GUIDED_TOUR?.total ?? base * multiplicador.GUIDED_TOUR), basico + 0.01);
-    const completo = Math.max(Number(configurado.PACKAGE?.total ?? base * multiplicador.PACKAGE), guiado + 0.01);
-    return Math.round(({ SINGLE_TICKET: basico, GUIDED_TOUR: guiado, PACKAGE: completo })[tipo] * 100) / 100;
-  }
-
   protected continuarPasoReserva(): void {
     const paso = this.reservaPaso();
-    if (paso === -1) {
-      this.observability.trackEvent('CHECKOUT_STEP', { step: 'ATTRACTION', action: 'continue_to_availability' });
-      this.reservaPaso.set(0);
-      return;
-    }
-    if (paso === 0) {
-      ['date', 'time', 'ticket_count'].forEach((campo) => this.reservaForm.controls[campo as 'date' | 'time' | 'ticket_count'].markAsTouched());
-      if (this.reservaForm.controls.date.invalid || this.reservaForm.controls.time.invalid || this.reservaForm.controls.ticket_count.invalid) return;
-      this.observability.trackEvent('CHECKOUT_STEP', { step: 'AVAILABILITY', action: 'completed', ticketCount: this.reservaForm.controls.ticket_count.value });
-      this.reservaPaso.set(1);
-      return;
-    }
     if (paso === 1) {
       const nombre = `${this.reservaForm.controls.first_name.value.trim()} ${this.reservaForm.controls.last_name.value.trim()}`.trim();
       this.reservaForm.controls.customer_name.setValue(nombre);
@@ -650,88 +639,83 @@ export class App {
 
   protected nombreTitular(): string { return this.reservaForm.controls.customer_name.value.trim(); }
 
-  protected totalReservaFormateado(): string {
-    const atraccion = this.atraccionParaReservar();
-    return new Intl.NumberFormat('es-EC', {
-      style: 'currency',
-      currency: atraccion?.price?.currency ?? 'USD',
-      maximumFractionDigits: 2,
-    }).format(this.totalReserva());
-  }
-
   private precioUnitario(atraccion: Atraccion): number {
-    return Number(atraccion.price?.total ?? atraccion.precioTicket ?? 0);
+    return Number(atraccion.price?.total ?? atraccion.precioBase ?? 0);
   }
 
   protected confirmarReserva(): void {
-    const atraccion = this.atraccionParaReservar();
-    if (!atraccion || this.reservaEnviando()) return;
-
+    const attraction = this.atraccionParaReservar(); const selection = this.seleccionActiva();
+    if (!attraction || !selection || this.reservaEnviando() || this.checkoutBlocked() || this.refreshingCheckoutAvailability()) return;
     if (!this.authService.isLoggedIn()) {
-      this.atraccionPendienteDeReserva.set(atraccion);
-      this.atraccionParaReservar.set(null);
-      this.abrirLogin();
-      return;
+      this.atraccionPendienteDeReserva.set(attraction); this.seleccionPendiente.set(selection); this.abrirLogin(); return;
     }
-
-    this.reservaForm.markAllAsTouched();
-    if (this.validacionCheckoutPendiente()) return;
-    if (this.reservaForm.controls.identity_number.invalid) {
-      this.observability.trackEvent('CHECKOUT_STEP', { step: 'CUSTOMER_DATA', validation: 'identity_number', result: 'invalid' });
-      return;
+    if (!this.submittedRequest) {
+      this.reservaForm.markAllAsTouched();
+      if (this.validacionCheckoutPendiente() || this.pagoCheckoutInvalido() || this.reservaForm.invalid) return;
+      const count = selection.num_adultos + selection.ninos.length;
+      if (!Number.isInteger(selection.num_adultos) || selection.num_adultos < 0 || count < selection.experience.min_participantes
+        || (selection.experience.max_participantes !== null && count > selection.experience.max_participantes)
+        || selection.ninos.some(child => !Number.isInteger(child.edad) || child.edad < 0 || child.edad > 17)
+        || selection.experience.atraccion_id !== attraction.id || selection.product_type !== selection.experience.tipo_experiencia
+        || !selection.date || !selection.time) {
+        this.errorReserva.set('Revisa la experiencia y los participantes seleccionados.'); return;
+      }
+      const form = this.reservaForm.getRawValue();
+      this.submittedRequest = {
+        paquete_id: selection.experience.id, date: selection.date, time: selection.time,
+        num_adultos: selection.num_adultos, ninos: selection.ninos.map(child => ({ edad: child.edad })),
+        customer_name: form.customer_name.trim(), customer_email: form.customer_email.trim(),
+        metodo_pago: this.metodoPago() === 'tarjeta' ? 'CREDIT_CARD' : 'PAYPAL',
+        ...(this.metodoPago() === 'tarjeta' ? { titular_tarjeta: form.cardholder.trim(), ultimos_cuatro_digitos: form.card_number.slice(-4) } : {}),
+      };
+      // Freeze the logical operation after its first submission, including retries after uncertain errors.
+      this.checkoutLocked.set(true); this.reservaForm.disable(); this.limpiarPagoTemporal();
     }
-    if (this.metodoPago() === 'tarjeta' && this.reservaForm.controls.card_number.invalid) {
-      this.observability.trackEvent('CHECKOUT_STEP', { step: 'PAYMENT', validation: 'card_number', result: 'invalid' });
-      return;
-    }
-    if (this.pagoCheckoutInvalido()) return;
-    if (this.reservaForm.invalid) return;
-
-    const formulario = this.reservaForm.getRawValue();
-    const datos: CrearReservaDto = {
-      date: formulario.date,
-      time: formulario.time,
-      ticket_count: formulario.ticket_count,
-      customer_name: formulario.customer_name.trim(),
-      customer_email: formulario.customer_email.trim(),
-      ...(this.tipoExperienciaReserva() ? { product_type: this.tipoExperienciaReserva()! } : {}),
-    };
-    this.observability.track('booking', 'booking_attempt', { attractionId: atraccion.id, ticketCount: datos.ticket_count });
-    this.observability.trackEvent('CHECKOUT_STEP', { step: 'PAYMENT', action: 'reservation_submitted', productType: datos.product_type, ticketCount: datos.ticket_count });
-    this.errorReserva.set('');
-    this.reservaEnviando.set(true);
-    this.reservasService.crearReserva(atraccion.id, datos).subscribe({
-      next: (reservation) => {
-        this.reservasService.notificarReservaConfirmada(
-          atraccion.id,
-          reservation.date ?? datos.date,
-          reservation.time ?? datos.time,
-          reservation.ticket_count,
-        );
-        this.observability.trackEvent('RESERVATION_SUCCESS', { attractionId: atraccion.id, reservationCode: reservation.reservation_id, productType: reservation.product_type ?? datos.product_type, ticketCount: reservation.ticket_count });
+    const request = this.submittedRequest;
+    this.errorReserva.set(''); this.reservaEnviando.set(true);
+    this.reservasService.crearReserva(attraction.id, request, this.checkoutKey).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: response => {
         this.reservaEnviando.set(false);
-        this.reservaConfirmada.set({ reservation, attraction: atraccion, customerName: datos.customer_name, date: reservation.date ?? datos.date });
-        this.atraccionParaReservar.set(null);
-        this.reservaForm.reset({
-          customer_name: '', customer_email: '', phone: '', date: this.fechaMinima, time: '10:00', ticket_count: 1,
-        });
-        this.toastService.mostrar('exito', '¡Reserva confirmada exitosamente!');
+        this.reservaConfirmada.set({ reservation: response, attraction, customerName: request.customer_name, date: response.date });
+        this.reservasService.notificarReservaConfirmada(attraction.id, response.date, response.time, response.total_cupos_ocupados);
+        this.cerrarModal(); this.reservaForm.reset();
+        this.toastService.mostrar('exito', `Reserva ${response.status.toLowerCase()}.`);
         if (this.vistaActual() === 'reservas') this.cargarMisReservas();
       },
       error: (error: unknown) => {
         this.reservaEnviando.set(false);
         if (error instanceof HttpErrorResponse && error.status === 401) {
-          this.authService.logout();
-          this.atraccionPendienteDeReserva.set(atraccion);
-          this.atraccionParaReservar.set(null);
-          this.errorLogin.set('Tu sesión venció. Inicia sesión nuevamente para continuar con la reserva.');
-          this.loginModalAbierto.set(true);
-          return;
+          this.authService.logout(); this.atraccionPendienteDeReserva.set(attraction); this.seleccionPendiente.set(selection); this.abrirLogin();
         }
-        const apiMessage = error instanceof HttpErrorResponse ? error.error?.message : error instanceof Error ? error.message : '';
-        const mensaje = Array.isArray(apiMessage) ? apiMessage.join(' ') : apiMessage || 'No pudimos crear la reserva. Verifica los datos y vuelve a intentarlo.';
-        this.errorReserva.set(mensaje);
-        this.toastService.mostrar('error', mensaje);
+        let message = httpErrorMessage(error);
+        if (error instanceof HttpErrorResponse && error.status === 409) {
+          if (error.error?.code === 'INSUFFICIENT_AVAILABILITY') {
+            message = 'Los cupos cambiaron. Estamos actualizando la disponibilidad; no se cre\u00f3 otra reserva.';
+            this.refrescarDisponibilidadCheckout(attraction.id, selection);
+          } else if (typeof error.error?.code === 'string' && error.error.code.startsWith('IDEMPOTENCY_')) {
+            this.checkoutBlocked.set(true);
+            message = 'Esta operaci\u00f3n est\u00e1 asociada a otra solicitud. Revisa tus reservas antes de iniciar otra.';
+          } else message = `Conflicto al confirmar: ${message}`;
+        }
+        this.errorReserva.set(message); this.toastService.mostrar('error', message);
+      },
+    });
+  }
+
+  private refrescarDisponibilidadCheckout(id: string, selection: BookingSelection): void {
+    this.checkoutBlocked.set(true); this.refreshingCheckoutAvailability.set(true);
+    this.reservasService.notificarDisponibilidadCambiada(id);
+    const operationKey = this.checkoutKey;
+    this.atraccionesService.obtenerDisponibilidad(id, selection.date, selection.product_type, selection.time).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: availability => {
+        if (operationKey !== this.checkoutKey) return;
+        this.refreshingCheckoutAvailability.set(false);
+        this.checkoutAvailabilityMessage.set(`${availability.available_spots} cupos disponibles para el turno seleccionado.`);
+        this.checkoutBlocked.set(!availability.times.includes(selection.time) || availability.available_spots < selection.num_adultos + selection.ninos.length);
+      },
+      error: error => {
+        if (operationKey !== this.checkoutKey) return;
+        this.refreshingCheckoutAvailability.set(false); this.checkoutAvailabilityMessage.set(httpErrorMessage(error));
       },
     });
   }
@@ -789,14 +773,9 @@ export class App {
     document.getElementById('resultados-atracciones')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
-  protected qrUrl(reservationId: string): string {
-    const payload = encodeURIComponent(`BOOKING-RESERVATION:${reservationId}`);
-    return `https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=8&data=${payload}`;
-  }
-
   protected cerrarVoucher(): void { this.reservaConfirmada.set(null); }
 
-  protected totalVoucher(reservation: ReservaCreada): string {
+  protected totalVoucher(reservation: ReservationResponse): string {
     return new Intl.NumberFormat('es-EC', { style: 'currency', currency: reservation.total_price?.currency ?? 'USD' })
       .format(reservation.total_price?.total ?? 0);
   }
@@ -828,7 +807,7 @@ export class App {
   }
 
   private coincideDestino(attraction: Atraccion, destination: DestinationCard): boolean {
-    const fields = [attraction.provincia, attraction.region, attraction.ciudad, ...(attraction.locations ?? []).flatMap((location) => [location.city, location.address]), attraction.name, attraction.nombre]
+    const fields = [attraction.provincia, attraction.region, ...locationsOf(attraction).flatMap((location) => [location.city, location.address]), attraction.name]
       .filter(Boolean).join(' ');
     const normalized = this.normalizarTexto(fields);
     return destination.aliases.some((alias) => normalized.includes(this.normalizarTexto(alias)));
@@ -840,8 +819,8 @@ export class App {
       return this.provincias.find((province) => this.normalizarTexto(province.name) === this.normalizarTexto(explicitProvince))?.name ?? explicitProvince;
     }
     const text = this.normalizarTexto([
-      attraction.region, attraction.ciudad, attraction.name, attraction.nombre,
-      ...(attraction.locations ?? []).flatMap((location) => [location.city, location.address]),
+      attraction.region, attraction.provincia, attraction.name,
+      ...locationsOf(attraction).flatMap((location) => [location.city, location.address]),
     ].filter(Boolean).join(' '));
     const explicit = this.provincias.find((province) => text.includes(this.normalizarTexto(province.name)));
     if (explicit) return explicit.name;
@@ -879,9 +858,8 @@ export class App {
     const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleUpperCase();
     const explicit = normalize(atraccion.region ?? '');
     const text = normalize([
-      atraccion.region, atraccion.name, atraccion.nombre, atraccion.long_description,
-      atraccion.descripcion, atraccion.ciudad, ...(atraccion.categories ?? []), ...(atraccion.badges ?? []),
-      ...(atraccion.locations ?? []).flatMap((location) => [location.address, location.city]),
+      atraccion.region, atraccion.name, atraccion.long_description, atraccion.provincia, ...(atraccion.categories ?? []), ...(atraccion.badges ?? []),
+      ...locationsOf(atraccion).flatMap((location) => [location.address, location.city]),
     ].filter(Boolean).join(' '));
 
     if (/GALAPAGOS|GALAPAGO|PUERTO AYORA|SAN CRISTOBAL|ISABELA ISLAND/.test(explicit)) return 'GALAPAGOS';

@@ -15,6 +15,12 @@ export const routes: Routes = [
   { path: 'actividades', component: ActivityResults },
   { path: 'actividades/:id', component: AttractionDetail },
   { path: 'atracciones/:id', component: AttractionDetail },
+  { path: 'acceso-denegado', loadComponent: () => import('./features/admin/admin-layout').then(m => m.AdminAccessDenied) },
+  { path: 'admin', canActivate: [adminGuard], loadComponent: () => import('./features/admin/admin-layout').then(m => m.AdminLayout), children: [
+    { path: '', pathMatch: 'full', redirectTo: 'atracciones' },
+    { path: 'atracciones', canActivate: [adminGuard], loadComponent: () => import('./features/admin/admin-attractions').then(m => m.AdminAttractions) },
+    { path: 'reservas', canActivate: [adminGuard], loadComponent: () => import('./features/admin/admin-reservations').then(m => m.AdminReservations) },
+  ] },
   { path: 'observabilidad', component: ObservabilityDashboard, canActivate: [adminGuard] },
   { path: '**', redirectTo: '' },
 ];

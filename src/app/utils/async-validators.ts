@@ -10,7 +10,7 @@ export function validateEcuadorianId(value: string): Promise<ValidationResult> {
     if (!/^\d{10}$/.test(value)) return { valid: false, message: 'Ingresa 10 dígitos.' };
     const province = Number(value.slice(0, 2));
     const thirdDigit = Number(value[2]);
-    if (!((province >= 1 && province <= 24) || province === 30) || thirdDigit >= 6) {
+    if (!(province >= 1 && province <= 24) || thirdDigit >= 6) {
       return { valid: false, message: 'La cédula no tiene un código provincial válido.' };
     }
 

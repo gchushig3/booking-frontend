@@ -1,75 +1,48 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { map, Observable, Subject } from 'rxjs';
-import { ProductType } from './atracciones.service';
-
-export interface CrearReservaDto {
-  date: string;
-  time?: string;
-  ticket_count: number;
-  customer_name: string;
-  customer_email: string;
-  product_type?: ProductType;
-}
-
-export interface ReservaCreada {
-  reservation_id: string;
-  status: 'CONFIRMED' | 'PENDING' | 'CANCELLED';
-  ticket_count: number;
-  product_type?: ProductType;
-  total_price: { currency: string; total: number };
-  date?: string;
-  time?: string;
-  attraction?: { id: string; name: string; image_url?: string };
-}
-
-export interface ReservaUsuario {
-  reservation_id: string;
-  status: 'CONFIRMED' | 'PENDING' | 'CANCELLED';
-  ticket_count: number;
-  product_type?: ProductType;
-  total_price: { currency: string; total: number };
-  date: string;
-  time?: string;
-  attraction: { id: string; name: string; image_url?: string };
-}
-
-interface ReservasResponse {
-  data?: ReservaUsuario[];
-}
+import { Observable, Subject } from 'rxjs';
+import { API_URL } from '../core/api.config';
+import { ReservationRequest, ReservationResponse } from '../contracts/atracciones.contracts';
 
 @Injectable({ providedIn: 'root' })
 export class ReservasService {
   private readonly http = inject(HttpClient);
-  private readonly apiUrl = 'http://localhost:3000/api/v1/atracciones';
+  private readonly apiUrl = `${inject(API_URL)}/atracciones`;
   private readonly reservaConfirmada = new Subject<{ attractionId: string; date: string; time?: string; ticketCount: number }>();
   readonly reservaConfirmada$ = this.reservaConfirmada.asObservable();
 
+  private readonly disponibilidadCambiada = new Subject<string>();
+  readonly disponibilidadCambiada$ = this.disponibilidadCambiada.asObservable();
+  notificarDisponibilidadCambiada(id: string): void { this.disponibilidadCambiada.next(id); }
+
   notificarReservaConfirmada(atraccionId: string, date: string, time: string | undefined, ticketCount: number): void {
+    this.notificarDisponibilidadCambiada(atraccionId);
     this.reservaConfirmada.next({ attractionId: atraccionId, date, time, ticketCount });
   }
 
-  crearReserva(atraccionId: string, datos: CrearReservaDto): Observable<ReservaCreada> {
-    return this.http.post<ReservaCreada>(
+  crearReserva(atraccionId: string, datos: ReservationRequest, idempotencyKey: string): Observable<ReservationResponse> {
+    return this.http.post<ReservationResponse>(
       `${this.apiUrl}/${encodeURIComponent(atraccionId)}/reservations`,
       datos,
       {
-        headers: { 'Idempotency-Key': crypto.randomUUID() },
+        headers: { 'X-Idempotency-Key': idempotencyKey },
       },
     );
   }
 
-  obtenerMisReservas(): Observable<ReservaUsuario[]> {
-    return this.http.get<ReservaUsuario[] | ReservasResponse>(`${this.apiUrl}/reservations`).pipe(
-      map((response) => Array.isArray(response) ? response : response.data ?? []),
-    );
+  obtenerMisReservas(): Observable<ReservationResponse[]> {
+    return this.http.get<ReservationResponse[]>(`${this.apiUrl}/reservations`);
   }
 
-  cancelarReserva(id: string): Observable<ReservaUsuario> {
-    return this.http.post<ReservaUsuario>(
+  obtenerReserva(id: string): Observable<ReservationResponse> {
+    return this.http.get<ReservationResponse>(`${this.apiUrl}/reservations/${encodeURIComponent(id)}`);
+  }
+
+  cancelarReserva(id: string, idempotencyKey: string): Observable<ReservationResponse> {
+    return this.http.post<ReservationResponse>(
       `${this.apiUrl}/reservations/${encodeURIComponent(id)}/cancel`,
       { reason: 'Cancelada por el usuario desde Mis Reservas' },
-      { headers: { 'Idempotency-Key': crypto.randomUUID() } },
+      { headers: { 'X-Idempotency-Key': idempotencyKey } },
     );
   }
 }

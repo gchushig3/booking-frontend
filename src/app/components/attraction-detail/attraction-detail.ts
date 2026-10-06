@@ -1,20 +1,22 @@
-import { CurrencyPipe } from '@angular/common';
+import { photosOf } from '../../contracts/attraction-view';
+import { httpErrorMessage } from '../../core/http-errors';
+import { CurrencyPipe, JsonPipe } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, DestroyRef, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { FormArray, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { Atraccion, AtraccionesService, DisponibilidadAtraccion, ProductType } from '../../services/atracciones.service';
+import { catchError, forkJoin, map, of, Subject, switchMap, tap } from 'rxjs';
+import { Atraccion, DisponibilidadAtraccion, PaqueteExperiencia } from '../../contracts/atracciones.contracts';
+import { AtraccionesService } from '../../services/atracciones.service';
 import { BookingNavigationService } from '../../services/booking-navigation.service';
 import { ObservabilityService } from '../../services/observability.service';
 import { ReservasService } from '../../services/reservas.service';
-
-const PACKAGES: { type: ProductType; name: string; description: string }[] = [
-  { type: 'SINGLE_TICKET', name: 'Básico · Entrada general', description: 'Entrada general con acceso a las instalaciones.' },
-  { type: 'GUIDED_TOUR', name: 'Tour guiado', description: 'Incluye guía especializado y recorrido completo.' },
-  { type: 'PACKAGE', name: 'Paquete completo', description: 'Experiencia guiada con accesos VIP o actividad extra según lo incluido por el operador.' },
-];
-
+const integer = Validators.pattern(/^\d+$/);
+interface AvailabilityQuery { id: string; date: string; productType: PaqueteExperiencia['tipo_experiencia']; time?: string }
 @Component({
-  selector: 'app-attraction-detail', standalone: true, imports: [RouterLink, CurrencyPipe], templateUrl: './attraction-detail.html',
+  selector: 'app-attraction-detail', standalone: true,
+  imports: [RouterLink, CurrencyPipe, JsonPipe, ReactiveFormsModule], templateUrl: './attraction-detail.html',
 })
 export class AttractionDetail {
   private readonly route = inject(ActivatedRoute);
@@ -23,184 +25,146 @@ export class AttractionDetail {
   private readonly observability = inject(ObservabilityService);
   private readonly reservas = inject(ReservasService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly availabilityQueries = new Subject<AvailabilityQuery | null>();
   protected readonly attraction = signal<Atraccion | null>(null);
   protected readonly loading = signal(true);
-  protected readonly date = signal(new Date(Date.now() - new Date().getTimezoneOffset() * 60_000).toISOString().slice(0, 10));
+  protected readonly notFound = signal(false);
+  protected readonly error = signal('');
+  protected readonly packagesError = signal('');
+  protected readonly packages = signal<PaqueteExperiencia[]>([]);
+  protected readonly selectedPackage = signal<PaqueteExperiencia | null>(null);
   protected readonly availability = signal<DisponibilidadAtraccion | null>(null);
   protected readonly availabilityLoading = signal(false);
-  protected readonly selectedType = signal<ProductType | null>(null);
-  protected readonly adults = signal(0);
-  protected readonly children = signal(0);
+  protected readonly availabilityError = signal('');
+  protected readonly minDate = new Date(Date.now() - new Date().getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
+  protected readonly scheduleForm = new FormGroup({
+    date: new FormControl(this.minDate, { nonNullable: true, validators: [Validators.required, control => control.value < this.minDate ? { pastDate: true } : null] }),
+    time: new FormControl('', { nonNullable: true, validators: Validators.required }),
+  });
+  protected readonly participantsForm = new FormGroup({
+    num_adultos: new FormControl(0, { nonNullable: true, validators: [Validators.required, Validators.min(0), integer] }),
+    num_ninos: new FormControl(0, { nonNullable: true, validators: [Validators.required, Validators.min(0), integer] }),
+    ninos: new FormArray<FormControl<number | null>>([]),
+  });
+  private readonly participantValues = toSignal(this.participantsForm.valueChanges, { initialValue: this.participantsForm.value });
+  private readonly scheduleValues = toSignal(this.scheduleForm.valueChanges, { initialValue: this.scheduleForm.value });
+  protected readonly adults = computed(() => this.participantValues().num_adultos ?? 0);
+  protected readonly children = computed(() => this.participantValues().num_ninos ?? 0);
   protected readonly quantity = computed(() => this.adults() + this.children());
-  protected readonly selectedTime = signal('');
-  protected readonly error = signal('');
-  protected readonly packages = PACKAGES;
-  protected readonly guidedGroupLimit = 10;
-  protected readonly minimumQuantity = computed(() => this.selectedType() === 'GUIDED_TOUR' ? 2 : 1);
-  protected readonly maximumQuantity = computed(() => {
-    const spots = this.availability()?.available_spots ?? 0;
-    return this.selectedType() === 'GUIDED_TOUR' ? Math.min(spots, this.guidedGroupLimit) : spots;
+  protected readonly date = computed(() => this.scheduleValues().date ?? '');
+  protected readonly selectedTime = computed(() => this.scheduleValues().time ?? '');
+  protected readonly images = computed(() => this.attraction() ? photosOf(this.attraction()!).map(photo => photo.url) : []);
+  protected readonly freeChildAge = computed(() => {
+    const raw = this.selectedPackage()?.politicas_json['edad_nino_gratis_hasta'];
+    if (raw === undefined) return null;
+    const age = Number(raw);
+    return Number.isInteger(age) && age >= 0 && age <= 17 ? age : null;
   });
-  protected readonly quantityValid = computed(() => this.adults() >= 1 && this.quantity() >= this.minimumQuantity() && this.quantity() <= this.maximumQuantity());
-  protected readonly totalPrice = computed(() => {
-    const item = this.attraction();
-    const type = this.selectedType();
-    if (!item || !type) return 0;
-    if (type === 'GUIDED_TOUR') return Math.floor(this.adults() / 2) * 57 + (this.adults() % 2) * 50;
-    return this.priceOf(item, type) * this.adults();
+  protected readonly participantMessage = computed(() => {
+    const pkg = this.selectedPackage(); const total = this.quantity();
+    if (!pkg) return 'Selecciona una experiencia.';
+    if (total < pkg.min_participantes) return `Se requieren al menos ${pkg.min_participantes} participantes.`;
+    if (pkg.max_participantes !== null && total > pkg.max_participantes) return `El paquete admite como máximo ${pkg.max_participantes} participantes.`;
+    if (this.availability() && total > this.availability()!.available_spots) return 'No hay suficientes cupos para todos los participantes.';
+    return '';
   });
-  protected readonly currencyCode = computed(() => {
-    const item = this.attraction();
-    const type = this.selectedType();
-    return (type && item?.package_prices?.[type]?.currency) || item?.price?.currency || 'USD';
+  protected readonly canAdvance = computed(() => {
+    this.participantValues(); this.scheduleValues();
+    return Boolean(this.selectedPackage() && this.participantsForm.valid && this.scheduleForm.valid && !this.participantMessage()
+      && !this.availabilityLoading() && !this.availabilityError() && this.availability()?.times.includes(this.selectedTime())
+      && this.availability()!.available_spots >= this.quantity());
   });
-  protected readonly minDate = this.date();
-  protected readonly images = computed(() => {
-    const attraction = this.attraction();
-    return attraction ? [...(attraction.images ?? []), ...(attraction.photos ?? [])].map((photo) => photo.url).filter(Boolean) : [];
-  });
-
   ngOnInit(): void {
-    this.reservas.reservaConfirmada$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(({ attractionId, date, time }) => {
-      const item = this.attraction();
-      if (!item || item.id !== attractionId || this.date() !== date) return;
-      if (time && this.selectedTime() !== time) return;
-      this.loadAvailability();
+    this.availabilityQueries.pipe(
+      switchMap(query => {
+        this.availability.set(null); this.availabilityError.set(''); this.availabilityLoading.set(Boolean(query));
+        if (!query) return of(null);
+        return this.service.obtenerDisponibilidad(query.id, query.date, query.productType, query.time).pipe(
+          map(result => ({ query, result, error: '' })),
+          catchError(error => of({ query, result: null, error: httpErrorMessage(error) })),
+        );
+      }), takeUntilDestroyed(this.destroyRef),
+    ).subscribe(response => {
+      if (!response) return;
+      this.availabilityLoading.set(false);
+      this.availabilityError.set(response.error);
+      this.availability.set(response.result);
+      if (!response.result) return;
+      const times = response.result.times;
+      if (!response.query.time && times.length) {
+        this.scheduleForm.controls.time.setValue(times[0]);
+        this.loadAvailability();
+      } else if (response.query.time && !times.includes(response.query.time)) {
+        this.scheduleForm.controls.time.setValue('');
+      }
     });
-    this.service.obtenerAtracciones().subscribe({
-      next: (items) => {
-        const attraction = items.find((item) => item.id === this.route.snapshot.paramMap.get('id')) ?? null;
-        this.attraction.set(attraction);
-        if (attraction?.product_type) this.selectedType.set(attraction.product_type);
-        if (attraction) this.observability.trackEvent('VIEW_ATTRACTION', { attractionId: attraction.id, attractionName: this.nameOf(attraction) });
-        this.loading.set(false);
-        if (attraction) this.loadAvailability();
-      },
-      error: () => { this.error.set('No se pudo cargar la ficha de la atracción.'); this.loading.set(false); },
+    this.participantsForm.controls.num_ninos.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(count => this.resizeChildren(count));
+    this.reservas.disponibilidadCambiada$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(id => {
+      if (this.attraction()?.id === id) this.loadAvailability();
     });
-  }
-
-  protected nameOf(item: Atraccion): string { return item.name ?? item.nombre ?? 'Atracción'; }
-  protected cityOf(item: Atraccion): string { return item.ciudad ?? item.locations?.find((location) => location.city)?.city ?? 'Ecuador'; }
-  protected provinceOf(item: Atraccion): string {
-    const text = `${item.region ?? ''} ${this.cityOf(item)} ${item.locations?.map((location) => location.address ?? '').join(' ') ?? ''}`.toLowerCase();
-    return ['Guayas', 'Pichincha', 'Azuay', 'Manabí', 'Tungurahua', 'Imbabura', 'Napo', 'Pastaza', 'Cotopaxi', 'Esmeraldas', 'Chimborazo', 'Galápagos'].find((province) => text.includes(province.toLowerCase())) ?? this.cityOf(item);
-  }
-  protected categoryOf(item: Atraccion): string { return item.categories?.[0]?.replaceAll('_', ' ') ?? 'Experiencia'; }
-  protected priceOf(item: Atraccion, type: ProductType): number {
-    const base = Number(item.price?.total ?? item.precioTicket ?? 0);
-    const multiplier: Record<ProductType, number> = { SINGLE_TICKET: 1, GUIDED_TOUR: 1.5, PACKAGE: 2 };
-    const configured = item.package_prices ?? {};
-    const single = Number(configured.SINGLE_TICKET?.total ?? base);
-    const guided = Math.max(Number(configured.GUIDED_TOUR?.total ?? base * multiplier.GUIDED_TOUR), single + 0.01);
-    const complete = Math.max(Number(configured.PACKAGE?.total ?? base * multiplier.PACKAGE), guided + 0.01);
-    return Math.round(({ SINGLE_TICKET: single, GUIDED_TOUR: guided, PACKAGE: complete })[type] * 100) / 100;
-  }
-  protected priceLabel(item: Atraccion, type: ProductType): string {
-    const configured = item.package_prices?.[type];
-    return new Intl.NumberFormat('es-EC', { style: 'currency', currency: configured?.currency ?? item.price?.currency ?? 'USD' }).format(this.priceOf(item, type));
-  }
-  protected totalPriceLabel(item: Atraccion, type: ProductType, quantity: number): string {
-    const currency = item.package_prices?.[type]?.currency ?? item.price?.currency ?? 'USD';
-    return new Intl.NumberFormat('es-EC', { style: 'currency', currency }).format(this.priceOf(item, type) * quantity);
-  }
-  protected includesOf(item: Atraccion): string[] { return item.includes?.length ? item.includes : ['Acceso a las instalaciones']; }
-  protected choose(type: ProductType): void {
-    if (this.selectedType() !== type) {
-      this.adults.set(type === 'GUIDED_TOUR' ? 2 : 1);
-      this.children.set(0);
-    }
-    this.selectedType.set(type);
-    this.selectedTime.set('');
-    this.trackPackageSelection(type);
-    this.error.set('');
-    this.loadAvailability();
-  }
-  protected decrementAdult(): void {
-    const groupMinimum = this.selectedType() === 'GUIDED_TOUR' ? 2 : 1;
-    if (this.quantity() <= groupMinimum || this.adults() <= 0) return;
-    this.adults.update((value) => value - 1);
-  }
-  protected incrementAdult(): void {
-    if (this.quantity() >= this.maximumQuantity()) { this.trackCapacityAttempt(); return; }
-    if (this.quantity() < this.maximumQuantity()) {
-      this.adults.update((value) => value + 1);
-      this.trackPackageSelection();
-    }
-  }
-  protected decrementChild(): void {
-    const groupMinimum = this.selectedType() === 'GUIDED_TOUR' ? 2 : 1;
-    if (this.quantity() <= groupMinimum || this.children() <= 0) return;
-    this.children.update((value) => value - 1);
-    this.trackPackageSelection();
-  }
-  protected incrementChild(): void {
-    if (this.quantity() >= this.maximumQuantity()) { this.trackCapacityAttempt(); return; }
-    if (this.quantity() < this.maximumQuantity()) {
-      this.children.update((value) => value + 1);
-      this.trackPackageSelection();
-    }
-  }
-  private trackPackageSelection(type = this.selectedType()): void {
-    if (!type) return;
-    this.observability.trackEvent('SELECT_PACKAGE', {
-      attractionId: this.attraction()?.id,
-      tipoExperiencia: type,
-      adultCount: this.adults(),
-      childCount: this.children(),
-      ticketCount: this.quantity(),
+    this.route.paramMap.pipe(
+      tap(() => {
+        this.loading.set(true); this.error.set(''); this.notFound.set(false); this.packagesError.set('');
+        this.attraction.set(null); this.packages.set([]); this.selectedPackage.set(null);
+        this.availabilityQueries.next(null); this.scheduleForm.controls.time.setValue('');
+      }),
+      switchMap(params => forkJoin({
+        attraction: this.service.obtenerAtraccion(params.get('id') ?? ''),
+        packages: this.service.obtenerPaquetes(params.get('id') ?? '').pipe(
+          map(packages => ({ packages, error: '' })), catchError(error => of({ packages: [] as PaqueteExperiencia[], error: httpErrorMessage(error) })),
+        ),
+      }).pipe(catchError(error => {
+        this.notFound.set(error instanceof HttpErrorResponse && error.status === 404);
+        this.error.set(httpErrorMessage(error)); return of(null);
+      }))), takeUntilDestroyed(this.destroyRef),
+    ).subscribe(response => {
+      this.loading.set(false);
+      if (!response) return;
+      this.attraction.set(response.attraction); this.packages.set(response.packages.packages); this.packagesError.set(response.packages.error);
+      this.observability.trackEvent('VIEW_ATTRACTION', { attractionId: response.attraction.id, attractionName: response.attraction.name });
     });
   }
-  private trackCapacityAttempt(): void {
-    this.observability.track('booking', 'capacity_selection_rejected', { attractionId: this.attraction()?.id, date: this.date(), time: this.selectedTime(), requestedCount: this.quantity() + 1, availableSpots: this.maximumQuantity() });
+  private resizeChildren(count: number): void {
+    const ages = this.participantsForm.controls.ninos;
+    if (!Number.isInteger(count) || count < 0) { ages.clear(); return; }
+    while (ages.length > count) ages.removeAt(ages.length - 1);
+    while (ages.length < count) ages.push(new FormControl<number | null>(null, [Validators.required, Validators.min(0), Validators.max(17), integer]));
   }
+  protected nameOf(item: Atraccion): string { return item.name; }
+  protected cityOf(item: Atraccion): string { return item.provincia; }
+  protected provinceOf(item: Atraccion): string { return item.provincia; }
+  protected categoryOf(item: Atraccion): string { return item.categoria; }
+  protected includesOf(item: Atraccion): string[] { return item.includes; }
+  protected choose(pkg: PaqueteExperiencia): void {
+    if (!this.packages().some(candidate => candidate.id === pkg.id)) return;
+    this.selectedPackage.set(pkg);
+    this.participantsForm.setValidators(control => {
+      const count = control.get('num_adultos')!.value + control.get('num_ninos')!.value;
+      return count < pkg.min_participantes ? { minimumParticipants: true }
+        : pkg.max_participantes !== null && count > pkg.max_participantes ? { maximumParticipants: true } : null;
+    });
+    this.participantsForm.updateValueAndValidity();
+    this.scheduleForm.controls.time.setValue(''); this.loadAvailability();
+    this.observability.trackEvent('SELECT_PACKAGE', { attractionId: this.attraction()?.id, packageId: pkg.id, productType: pkg.tipo_experiencia });
+  }
+  protected decrementAdult(): void { this.participantsForm.controls.num_adultos.setValue(Math.max(0, this.adults() - 1)); }
+  protected incrementAdult(): void { this.participantsForm.controls.num_adultos.setValue(this.adults() + 1); }
+  protected decrementChild(): void { this.participantsForm.controls.num_ninos.setValue(Math.max(0, this.children() - 1)); }
+  protected incrementChild(): void { this.participantsForm.controls.num_ninos.setValue(this.children() + 1); }
   protected loadAvailability(): void {
-    const item = this.attraction();
-    if (!item || !this.date()) return;
-    const requestedTime = this.selectedTime();
-    this.availabilityLoading.set(true); this.availability.set(null);
-    this.service.obtenerDisponibilidad(item.id, this.date(), this.selectedType() ?? undefined, requestedTime || undefined).subscribe({
-      next: (result) => {
-        this.availability.set(result);
-        if (!requestedTime && result.times?.[0]) {
-          this.selectedTime.set(result.times[0]);
-          this.loadAvailability();
-          return;
-        }
-        if (requestedTime && result.times?.length && !result.times.includes(requestedTime)) {
-          this.selectedTime.set(result.times[0]);
-          this.loadAvailability();
-          return;
-        }
-        this.selectedTime.set(requestedTime && result.times?.includes(requestedTime) ? requestedTime : result.times?.[0] ?? '');
-        if (result.available_spots === 0) this.observability.track('booking', 'slot_sold_out', { attractionId: item.id, date: this.date(), time: this.selectedTime(), productType: this.selectedType() ?? undefined });
-        const maximum = this.selectedType() === 'GUIDED_TOUR' ? Math.min(result.available_spots, this.guidedGroupLimit) : result.available_spots;
-        if (this.quantity() > maximum) {
-          const excess = this.quantity() - maximum;
-          const removedChildren = Math.min(this.children(), excess);
-          this.children.update((value) => value - removedChildren);
-          this.adults.update((value) => Math.max(0, value - (excess - removedChildren)));
-        }
-        this.availabilityLoading.set(false);
-      },
-      error: () => { this.availability.set(null); this.availabilityLoading.set(false); this.error.set('No se pudo consultar la disponibilidad para esta fecha.'); },
-    });
+    const item = this.attraction(); const pkg = this.selectedPackage();
+    if (!item || !pkg || this.scheduleForm.controls.date.invalid) { this.availabilityQueries.next(null); return; }
+    this.availabilityQueries.next({ id: item.id, date: this.date(), productType: pkg.tipo_experiencia, time: this.selectedTime() || undefined });
   }
-  protected selectTime(time: string): void {
-    this.selectedTime.set(time);
-    this.loadAvailability();
-  }
-  protected selectDate(date: string): void {
-    this.date.set(date);
-    this.selectedTime.set('');
-    this.loadAvailability();
-  }
+  protected selectTime(time: string): void { this.scheduleForm.controls.time.setValue(time); this.loadAvailability(); }
+  protected selectDate(date: string): void { this.scheduleForm.controls.date.setValue(date); this.scheduleForm.controls.time.setValue(''); this.loadAvailability(); }
   protected next(): void {
-    const item = this.attraction();
-    if (!item || !this.selectedType() || !this.quantityValid() || !this.date() || !this.selectedTime()) return;
-    this.booking.requestBooking(item, {
-      date: this.date(), time: this.selectedTime(), ticket_count: this.quantity(), product_type: this.selectedType()!,
-      adult_count: this.adults(), child_count: this.children(), checkout_total: this.totalPrice(),
+    this.participantsForm.markAllAsTouched(); this.scheduleForm.markAllAsTouched();
+    if (!this.canAdvance()) return;
+    const pkg = structuredClone(this.selectedPackage()!);
+    this.booking.requestBooking(this.attraction()!, {
+      experience: pkg, product_type: pkg.tipo_experiencia, date: this.date(), time: this.selectedTime(),
+      num_adultos: this.adults(), ninos: this.participantsForm.controls.ninos.getRawValue().map(edad => ({ edad: edad! })),
     });
   }
 }
