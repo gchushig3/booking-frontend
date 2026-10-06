@@ -32,11 +32,11 @@
             <label class="mt-5 block text-sm font-semibold">Fecha<input type="date" [min]="minDate" [value]="date()" (change)="selectDate($any($event.target).value)" class="mt-2 w-full rounded-xl border border-stone-300 px-3 py-3"></label>
             @if (scheduleForm.controls.date.invalid) { <p role="alert" class="text-sm text-red-700">Selecciona hoy o una fecha futura.</p> }
             @if (availabilityLoading()) { <p class="mt-3 text-sm text-slate-500" aria-live="polite">Consultando horarios...</p> }
-            @else if (availabilityError()) { <p role="alert" class="mt-3 text-sm text-red-700">{{ availabilityError() }}</p><button type="button" (click)="loadAvailability()" class="text-sm underline">Reintentar disponibilidad</button> }
+            @if (availabilityError()) { <p role="alert" class="mt-3 text-sm text-red-700">{{ availabilityError() }}</p><button type="button" (click)="loadAvailability()" class="text-sm underline">Reintentar disponibilidad</button> }
             @else if (availability(); as slots) {
-              @if (slots.times.length) { <label class="mt-4 block text-sm font-semibold">Horario / turno<select [value]="selectedTime()" (change)="selectTime($any($event.target).value)" class="mt-2 w-full rounded-xl border border-stone-300 bg-white px-3 py-3"><option value="">Selecciona un horario</option>@for (time of slots.times; track time) { <option [value]="time">{{ time }}</option> }</select></label> }
+              @if (slots.times.length) { <label class="mt-4 block text-sm font-semibold">Horario / turno<select [formControl]="scheduleForm.controls.time" (change)="selectTime($any($event.target).value)" class="mt-2 w-full rounded-xl border border-stone-300 bg-white px-3 py-3"><option value="">Selecciona un horario</option>@for (time of slots.times; track time) { <option [value]="time">{{ time }}</option> }</select></label> }
               @if (!slots.times.length) { <p role="status" class="mt-3 text-sm text-amber-700">No hay horarios disponibles para esta fecha.</p> }
-              @if (slots.available_spots > 0) { <p class="mt-2 text-xs text-emerald-700">{{ slots.available_spots }} cupos disponibles</p> } @else { <p class="mt-3 text-sm font-semibold text-amber-700">Sin cupos disponibles para esta fecha y turno.</p> }
+              @if (!availabilityLoading()) { @if (slots.available_spots > 0) { <p class="mt-2 text-xs text-emerald-700">{{ slots.available_spots }} cupos disponibles</p> } @else { <p class="mt-3 text-sm font-semibold text-amber-700">Sin cupos disponibles para esta fecha y turno.</p> } }
             }
             <form [formGroup]="participantsForm" class="mt-4 space-y-3">
               <label class="flex items-center justify-between gap-3 text-sm font-semibold">Adultos<input type="number" min="0" step="1" formControlName="num_adultos" class="w-24 rounded-xl border border-stone-300 p-2"></label>
@@ -49,7 +49,7 @@
               @if (freeChildAge() !== null) { <p class="text-xs text-teal-900">Política del paquete: niños de hasta {{ freeChildAge() }} años sin costo.</p> }
               <p class="text-xs text-slate-600">Cada adulto y cada niño ocupa un cupo, independientemente de su tarifa.</p>
             </form>
-            <div class="mt-4 rounded-xl bg-teal-50 p-4 text-sm">{{ adults() }} adultos · {{ children() }} niños<p class="mt-1 font-semibold">Total final calculado al confirmar</p></div>
+            <div class="mt-4 rounded-xl bg-teal-50 p-4 text-sm">{{ adults() }} adultos · {{ children() }} niños<p class="mt-1 font-semibold">@if (total() !== null) { Total a pagar: {{ total() | currency:selectedPackage()!.moneda }} } @else { Completa las edades para calcular el total. }</p></div>
           }
           @if (advanceMessage()) { <p id="booking-next-help" role="status" class="mt-4 text-sm text-slate-600">{{ advanceMessage() }}</p> }
           <button [attr.aria-describedby]="advanceMessage() ? 'booking-next-help' : null" type="button" (click)="next()" [disabled]="!canAdvance()" class="mt-5 w-full rounded-xl bg-teal-700 px-5 py-4 text-sm font-bold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-45">Siguiente: Datos de la Reserva</button>

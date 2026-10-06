@@ -1,4 +1,5 @@
 import { photosOf } from '../../contracts/attraction-view';
+import { reservationTotal } from '../../utils/reservation-total';
 import { httpErrorMessage } from '../../core/http-errors';
 import { CurrencyPipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -51,6 +52,11 @@ export class AttractionDetail {
   protected readonly adults = computed(() => this.participantValues().num_adultos ?? 0);
   protected readonly children = computed(() => this.participantValues().num_ninos ?? 0);
   protected readonly quantity = computed(() => this.adults() + this.children());
+  protected readonly total = computed(() => {
+    const pkg = this.selectedPackage();
+    const values = this.participantValues();
+    return pkg ? reservationTotal(pkg, values.num_adultos ?? 0, values.ninos ?? []) : null;
+  });
   protected readonly date = computed(() => this.scheduleValues().date ?? '');
   protected readonly selectedTime = computed(() => this.scheduleValues().time ?? '');
   protected readonly images = computed(() => this.attraction() ? photosOf(this.attraction()!).map(photo => photo.url) : []);
@@ -110,7 +116,8 @@ export class AttractionDetail {
   ngOnInit(): void {
     this.availabilityQueries.pipe(
       switchMap(query => {
-        this.availability.set(null); this.availabilityError.set(''); this.availabilityLoading.set(Boolean(query));
+        if (!query?.time) this.availability.set(null);
+        this.availabilityError.set(''); this.availabilityLoading.set(Boolean(query));
         if (!query) return of(null);
         return this.service.obtenerDisponibilidad(query.id, query.date, query.productType, query.time).pipe(
           map(result => ({ query, result, error: '' })),

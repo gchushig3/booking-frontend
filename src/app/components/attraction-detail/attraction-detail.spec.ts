@@ -92,6 +92,23 @@ describe('Attraction booking detail', () => {
     query.flush({ date: '2099-10-10', time: '15:45', times: ['11:15', '15:45'], available_spots: 4 });
     expect(component['availability']()?.available_spots).toBe(4);
   });
+  it('keeps the selected time visible while refreshing availability', () => {
+    load(); available(); participants();
+    const select = fixture.nativeElement.querySelector('select') as HTMLSelectElement;
+    expect(select.value).toBe('11:15');
+    select.value = '15:45';
+    select.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('select')).toBe(select);
+    expect(select.value).toBe('15:45');
+    expect(component['canAdvance']()).toBe(false);
+    http.expectOne(req => req.url === base + '/availability' && req.params.get('time') === '15:45')
+      .flush({ date: '2099-10-10', time: '15:45', times: ['11:15', '15:45'], available_spots: 4 });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('select')).toBe(select);
+    expect(select.value).toBe('15:45');
+    expect(component['canAdvance']()).toBe(true);
+  });
   it('represents two adults and one child with an individual age', () => {
     load(); available(); participants();
     let selected: BookingSelection | undefined;
@@ -129,10 +146,18 @@ describe('Attraction booking detail', () => {
     expect(component['canAdvance']()).toBe(false);
     expect(component['participantMessage']()).toContain('cupos');
   });
-  it('renders childhood policy only when supplied and never invents a total', () => {
+  it('charges all participants when no childhood policy is supplied', () => {
     const pkg = { ...experience, politicas_json: {} }; load([pkg]); available(pkg); participants();
     expect(fixture.nativeElement.textContent).not.toContain('sin costo');
-    expect(fixture.nativeElement.textContent).toContain('Total final calculado al confirmar');
+    expect(component['total']()).toBe(111);
+    expect(fixture.nativeElement.textContent).toContain('Total a pagar:');
+  });
+  it('updates the total with child ages and waits for missing ages', () => {
+    load(); available(); participants(2, [6]);
+    expect(component['total']()).toBe(74);
+    participants(2, [7]); expect(component['total']()).toBe(111);
+    participants(2, [null]); expect(component['total']()).toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('Completa las edades');
   });
   it('cancels an old date query before allowing its response to overwrite the new one', () => {
     load(); component['choose'](experience);

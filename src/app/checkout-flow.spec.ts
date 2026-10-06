@@ -42,6 +42,17 @@ describe('Checkout flow with backend contracts', () => {
     expect(app['checkoutKey']).toBe(key); expect(app['reservaEnviando']()).toBe(false);
     if (status === 403) expect(app['authService'].isLoggedIn()).toBe(true);
   });
+  it('shows the payable package total before submitting, respecting free children', async () => {
+    await open();
+    const expected = new Intl.NumberFormat('es-EC', { style: 'currency', currency: selection().experience.moneda }).format(74);
+    expect(app['totalCheckout']()).toBe(expected);
+    expect(fixture.nativeElement.textContent).toContain('Total a pagar');
+    expect(fixture.nativeElement.textContent).toContain(expected);
+    http.expectNone(endpoint);
+    app['cerrarModal']();
+    await open(selection({ ninos: [{ edad: 7 }] }));
+    expect(app['totalCheckout']()).toBe(new Intl.NumberFormat('es-EC', { style: 'currency', currency: selection().experience.moneda }).format(111));
+  });
   it('submits 2 adults and a child age without ticket_count or frontend totals', async () => {
     await open(); const req = submit();
     expect(req.request.body).toEqual({ date: '2099-10-10', time: '11:15', paquete_id: selection().experience.id, num_adultos: 2, ninos: [{ edad: 6 }], customer_name: 'Ana Perez', customer_email: 'ana@example.com', metodo_pago: 'CREDIT_CARD', titular_tarjeta: 'Ana Perez', ultimos_cuatro_digitos: '4242' });

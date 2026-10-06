@@ -1,4 +1,5 @@
 import { ReservationDetail } from './components/reservation-detail/reservation-detail';
+import { reservationTotal } from './utils/reservation-total';
 import { ReservationQr } from './components/reservation-qr/reservation-qr';
 import { ReservationRequest, ReservationResponse } from './contracts/atracciones.contracts';
 import { photosOf, locationsOf } from './contracts/attraction-view';
@@ -548,6 +549,14 @@ export class App {
   }
 
   protected seleccionCheckout(): BookingSelection | null { return this.seleccionActiva(); }
+  protected readonly totalCheckout = computed(() => {
+    const selection = this.seleccionActiva();
+    if (!selection) return '';
+    const total = reservationTotal(selection.experience, selection.num_adultos, selection.ninos.map(child => child.edad));
+    return total === null ? 'Precio no disponible' : new Intl.NumberFormat('es-EC', {
+      style: 'currency', currency: selection.experience.moneda,
+    }).format(total);
+  });
   protected desgloseParticipantesCheckout(): string {
     const selection = this.seleccionActiva();
     return selection ? `${selection.num_adultos} adultos + ${selection.ninos.length} ni\u00f1os` : '';
