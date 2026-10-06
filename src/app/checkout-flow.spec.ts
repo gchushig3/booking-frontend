@@ -35,6 +35,13 @@ describe('Checkout flow with backend contracts', () => {
   }
   function submit(): TestRequest { app['confirmarReserva'](); return http.expectOne(endpoint); }
   function failed(request: TestRequest, code = '', status = 500) { request.flush({ code, message: 'Backend failure' }, { status, statusText: 'Request failed' }); }
+  for (const status of [400, 401, 403, 404, 429, 500]) it(`shows HTTP ${status} distinctly without silently generating another checkout intent`, async () => {
+    await open(selection(), 'paypal'); const req = submit(); const key = req.request.headers.get('X-Idempotency-Key');
+    failed(req, '', status);
+    expect(app['errorReserva']()).toContain(`(${status})`);
+    expect(app['checkoutKey']).toBe(key); expect(app['reservaEnviando']()).toBe(false);
+    if (status === 403) expect(app['authService'].isLoggedIn()).toBe(true);
+  });
   it('submits 2 adults and a child age without ticket_count or frontend totals', async () => {
     await open(); const req = submit();
     expect(req.request.body).toEqual({ date: '2099-10-10', time: '11:15', paquete_id: selection().experience.id, num_adultos: 2, ninos: [{ edad: 6 }], customer_name: 'Ana Perez', customer_email: 'ana@example.com', metodo_pago: 'CREDIT_CARD', titular_tarjeta: 'Ana Perez', ultimos_cuatro_digitos: '4242' });
@@ -92,6 +99,17 @@ describe('Checkout flow with backend contracts', () => {
   it('generates another key only when a new checkout starts after success', async () => {
     await open(); const first = submit(); const key = first.request.headers.get('X-Idempotency-Key'); first.flush(reservation);
     await open(); const second = submit(); expect(second.request.headers.get('X-Idempotency-Key')).not.toBe(key); failed(second);
+  });
+  it('shows the confirmed backend UUID as a local QR while retaining the returned total', async () => {
+    await open(selection(), 'paypal');
+    const id = 'a1234567-1234-4234-8234-123456789abc';
+    const response = { ...reservation, reservation_id: id };
+    submit().flush(response); fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-reservation-qr svg')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('app-reservation-qr [data-reservation-code]').textContent).toContain(id);
+    expect(app['reservaConfirmada']()?.reservation.total_price).toEqual(response.total_price);
+    expect(fixture.nativeElement.textContent).toContain('71,23');
+    http.match(req => req.url.includes('/availability')).forEach(req => req.flush({ date: response.date, time: response.time, available_spots: 0, times: [] }));
   });
   it('blocks double clicks while a checkout request is pending', async () => {
     await open(); app['confirmarReserva'](); app['confirmarReserva']();

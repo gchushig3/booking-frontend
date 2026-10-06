@@ -1,193 +1,137 @@
-import { Injectable, inject, isDevMode, signal } from '@angular/core';
-import { AuthService } from './auth.service';
-
+import { HttpBackend, HttpClient } from '@angular/common/http';
+import { Injectable, OnDestroy, inject, signal } from '@angular/core';
+import { NavigationEnd, NavigationStart, Router } from '@angular/router';
+import { Subscription } from 'rxjs';
+import { API_URL } from '../core/api.config';
+import { BrowserEvent, TelemetryCategory, safeTelemetryText, safeTelemetryUrl } from '../contracts/telemetry.contracts';
 export type ObservabilityCategory = 'navigation' | 'click' | 'http' | 'js' | 'auth' | 'search' | 'filter' | 'booking' | 'modal' | 'system';
 export type AnalyticsEventType = 'SEARCH' | 'VIEW_ATTRACTION' | 'SELECT_PACKAGE' | 'CHECKOUT_STEP' | 'RESERVATION_SUCCESS' | 'HTTP_LATENCY' | 'OTHER';
-export type AnalyticsUserRole = 'GUEST' | 'ADMIN';
-export interface ObservabilityEvent {
-  id: string;
-  timestamp: string;
-  type: ObservabilityCategory;
-  name: string;
-  eventType: AnalyticsEventType;
-  payload: Record<string, unknown>;
-  userRole: AnalyticsUserRole;
-  details?: Record<string, unknown>;
-}
-
-const STORAGE_KEY = 'viveloeu_analytics_events';
-const LEGACY_STORAGE_KEY = 'booking-observability:v1';
-const MAX_EVENTS = 100;
+type Connection = EventTarget & { effectiveType?: string; downlink?: number; rtt?: number; saveData?: boolean };
 
 @Injectable({ providedIn: 'root' })
-export class ObservabilityService {
-  private readonly authService = inject(AuthService);
-  readonly events = signal<ObservabilityEvent[]>(this.readEvents());
-  private readonly startedAt = this.now();
-
+export class ObservabilityService implements OnDestroy {
+  // Public ingestion bypasses interceptors: no JWT and no telemetry feedback loop.
+  private readonly http = new HttpClient(inject(HttpBackend));
+  private readonly endpoint = `${inject(API_URL)}/observabilidad/eventos`;
+  private readonly router = inject(Router, { optional: true });
+  private readonly sessionId = crypto.randomUUID();
+  readonly events = signal<BrowserEvent[]>([]);
+  private queue: BrowserEvent[] = [];
+  private readonly cleanups: (() => void)[] = [];
+  private timer?: ReturnType<typeof setInterval>;
+  private resizeTimer?: ReturnType<typeof setTimeout>;
+  private loadTimer?: ReturnType<typeof setTimeout>;
+  private inFlight?: Subscription;
+  private routing?: Subscription;
+  private sending = false;
+  private destroyed = false;
+  private lastFlush = 0;
+  private failures = 0;
   constructor() {
-    this.track('navigation', 'page_load', { url: this.safe(() => `${location.origin}${location.pathname}`, '') });
-    this.installGlobalListeners();
-    this.installConsoleApi();
-    this.safe(() => window.addEventListener('storage', (event) => {
-      if (event.key === STORAGE_KEY || event.key === null) this.refreshFromStorage();
-    }), undefined);
+    try { localStorage.removeItem('viveloeu_analytics_events'); localStorage.removeItem('booking-observability:v1'); } catch { /* storage unavailable */ }
+    this.captureCapabilities(); this.captureViewport(); this.captureConnection();
+    this.listen(window, 'error', event => {
+      const target = event.target;
+      if (target instanceof HTMLElement && target !== document.documentElement) {
+        this.record('RESOURCE_ERROR', 'resource_error', { tag: target.tagName.toLowerCase(), url: safeTelemetryUrl(target.getAttribute('src') ?? target.getAttribute('href') ?? '') });
+      } else {
+        const error = event as ErrorEvent;
+        this.record('ERROR', 'window_error', { message: safeTelemetryText(error.message || 'JavaScript error'), filename: safeTelemetryUrl(error.filename || ''), line: error.lineno || 0 });
+      }
+    }, true);
+    this.listen(window, 'unhandledrejection', event => this.record('ERROR', 'unhandled_rejection', { reason: this.errorReason((event as PromiseRejectionEvent).reason) }));
+    this.listen(document, 'click', event => {
+      const target = event.target instanceof Element ? event.target.closest('a,button,input,select,textarea,[role="button"],[role="link"]') : null;
+      if (!target || target.matches('input[type="password"],input[type="hidden"]') || target.closest('[data-telemetry="off"]')) return;
+      // No textContent, value, name, id, arbitrary attributes or form content.
+      this.record('INTERACTION', 'click', { tag: target.tagName.toLowerCase(), role: target.getAttribute('role') === 'link' ? 'link' : target.getAttribute('role') === 'button' ? 'button' : 'control', action: 'activate' });
+    }, true);
+    this.listen(document, 'visibilitychange', () => {
+      this.record('VISIBILITY', 'visibility_change', { state: document.visibilityState });
+      if (document.visibilityState === 'hidden') this.flushBeacon();
+    });
+    this.listen(window, 'resize', () => { if (this.resizeTimer) clearTimeout(this.resizeTimer); this.resizeTimer = setTimeout(() => this.captureViewport(), 250); });
+    const connection = this.connection();
+    if (connection?.addEventListener) this.listen(connection, 'change', () => this.captureConnection());
+    this.listen(window, 'pagehide', () => this.flushBeacon());
+    if (document.readyState === 'complete') this.loadTimer = setTimeout(() => this.capturePerformance(), 0);
+    else this.listen(window, 'load', () => { this.loadTimer = setTimeout(() => this.capturePerformance(), 0); });
+    let navigationStart = this.now();
+    this.routing = this.router?.events.subscribe(event => {
+      if (event instanceof NavigationStart) navigationStart = this.now();
+      if (event instanceof NavigationEnd) this.record('PERFORMANCE', 'route_navigation', { durationMs: Math.max(0, this.now() - navigationStart) });
+    });
+    this.timer = setInterval(() => this.flush(), 5000);
   }
-
-  track(type: ObservabilityCategory, name: string, details?: Record<string, unknown>, eventType = this.inferEventType(type, name)): void {
-    const payload = details ? this.sanitize(details) : {};
-    const event: ObservabilityEvent = {
-      id: this.makeId(), timestamp: new Date().toISOString(), type, name,
-      eventType, payload, details: payload, userRole: this.authService.isAdmin() ? 'ADMIN' : 'GUEST',
-    };
-    const events = [...this.events(), event].slice(-MAX_EVENTS);
-    this.events.set(events);
-    this.persist(events);
+  private listen(target: EventTarget, type: string, handler: (event: Event) => void, capture = false) {
+    target.addEventListener(type, handler, capture); this.cleanups.push(() => target.removeEventListener(type, handler, capture));
   }
-
-  recordHttp(method: string, url: string, durationMs: number, status: number, error = false): void {
-    const payload = { method, url: this.apiRoute(url), durationMs: Math.round(durationMs), status };
-    this.track('http', error ? 'http_error' : 'http_request', payload, 'HTTP_LATENCY');
+  private now() { return typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now(); }
+  private errorReason(reason: unknown): string {
+    return reason instanceof Error ? safeTelemetryText(reason.message) : typeof reason === 'string' ? safeTelemetryText(reason) : 'Non-string rejection (content omitted)';
   }
-
-  trackEvent(eventType: Exclude<AnalyticsEventType, 'HTTP_LATENCY'>, payload: Record<string, unknown>): void {
-    const legacy = eventType === 'SEARCH' ? ['search', 'search_submitted'] as const
-      : eventType === 'VIEW_ATTRACTION' ? ['navigation', 'attraction_viewed'] as const
-      : eventType === 'SELECT_PACKAGE' ? ['booking', 'package_selected'] as const
-      : eventType === 'CHECKOUT_STEP' ? ['booking', 'checkout_step'] as const
-      : ['booking', 'booking_success'] as const;
-    this.track(legacy[0], legacy[1], payload, eventType);
+  private record(category: TelemetryCategory, type: string, payload: BrowserEvent['payload']) {
+    if (this.destroyed) return;
+    const event: BrowserEvent = { category, type, timestamp: new Date().toISOString(), route: safeTelemetryUrl(location.pathname), sessionId: this.sessionId, payload };
+    this.events.update(events => [...events, event].slice(-100)); this.queue = [...this.queue, event].slice(-100);
+    if (this.queue.length >= 20 && Date.now() - this.lastFlush >= 3000) this.flush();
   }
-
-  getSnapshot(): Record<string, unknown> {
-    if (!isDevMode() && !this.authService.isAdmin()) return { access: 'denied' };
-    const events = this.events();
-    const navigation = this.safe(() => performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined, undefined);
-    const resources = this.safe(() => performance.getEntriesByType('resource') as PerformanceResourceTiming[], []);
-    const http = events.filter((event) => event.type === 'http');
-    const errors = events.filter((event) => event.type === 'js' || event.name === 'http_error').length;
-    const bookings = events.filter((event) => event.type === 'booking');
-    return {
-      generatedAt: new Date().toISOString(), startedAt: this.startedAt,
-      environment: this.environment(),
-      performance: {
-        initialLoadMs: navigation?.loadEventEnd ? Math.round(navigation.loadEventEnd) : null,
-        domContentLoadedMs: navigation?.domContentLoadedEventEnd ? Math.round(navigation.domContentLoadedEventEnd) : null,
-        resources: resources.slice(-100).map((entry) => ({ name: this.safeUrl(entry.name), durationMs: Math.round(entry.duration), transferSize: entry.transferSize })),
-        requests: http.map((event) => event.details),
-      },
-      metrics: { totalEvents: events.length, errors, bookingAttempts: bookings.filter((e) => e.name === 'booking_attempt').length, bookingSuccesses: bookings.filter((e) => e.name === 'booking_success').length },
-      events,
-    };
+  track(type: ObservabilityCategory, name: string, details?: Record<string, unknown>, _eventType?: AnalyticsEventType) {
+    if (type === 'js') this.record('ERROR', name === 'unhandled_rejection' ? name : name === 'window_error' ? name : 'angular_error', { message: this.errorReason(details?.['message'] ?? details?.['reason'] ?? 'Application error') });
+    else this.record('DOMAIN', 'application_event', { action: safeTelemetryText(name) });
   }
-
-  clear(): void {
-    this.events.set([]);
-    this.safe(() => localStorage.removeItem(STORAGE_KEY), undefined);
+  trackEvent(eventType: Exclude<AnalyticsEventType, 'HTTP_LATENCY'>, _payload: Record<string, unknown>) { this.record('DOMAIN', 'application_event', { action: eventType }); }
+  recordHttp(method: string, url: string, durationMs: number, status: number, error = false) {
+    if (/\/observabilidad(?:\/|$)/.test(url)) return;
+    this.record('HTTP', error ? 'http_error' : 'http_request', { method, url: safeTelemetryUrl(url), durationMs: Math.max(0, Math.round(durationMs)), status });
   }
-
-  refreshFromStorage(): void {
-    const stored = this.safe(() => localStorage.getItem(STORAGE_KEY), undefined as string | null | undefined);
-    if (stored === undefined) return;
-    if (!stored) {
-      const legacy = this.safe(() => localStorage.getItem(LEGACY_STORAGE_KEY), null);
-      if (legacy) {
-        this.loadStoredValue(legacy);
-        this.safe(() => localStorage.removeItem(LEGACY_STORAGE_KEY), undefined);
-      } else this.events.set([]);
-      return;
-    }
-    this.loadStoredValue(stored);
+  capturePerformance() {
+    if (typeof performance === 'undefined' || typeof performance.getEntriesByType !== 'function') return;
+    const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
+    if (!nav || nav.loadEventEnd <= 0) return;
+    const resources = performance.getEntriesByType('resource');
+    this.record('PERFORMANCE', 'navigation_timing', {
+      durationMs: Math.max(0, nav.duration), domContentLoadedMs: Math.max(0, nav.domContentLoadedEventEnd - nav.startTime), loadMs: Math.max(0, nav.loadEventEnd - nav.startTime),
+      resourceCount: resources.length, resourceDurationMs: resources.reduce((sum, entry) => sum + Math.max(0, entry.duration), 0),
+    });
   }
-
-  private installGlobalListeners(): void {
-    this.safe(() => {
-      window.addEventListener('error', (event) => this.track('js', 'window_error', { message: event.message, filename: event.filename, line: event.lineno }));
-      window.addEventListener('unhandledrejection', (event) => this.track('js', 'unhandled_rejection', { reason: String(event.reason ?? 'Unknown rejection') }));
-      document.addEventListener('visibilitychange', () => this.track('navigation', 'visibility_change', { state: document.visibilityState }));
-    }, undefined);
+  captureViewport() { this.record('VIEWPORT', 'viewport', { width: window.innerWidth, height: window.innerHeight, devicePixelRatio: window.devicePixelRatio || 1 }); }
+  private connection(): Connection | undefined { return (navigator as Navigator & { connection?: Connection }).connection; }
+  captureConnection() {
+    const connection = this.connection(); const payload: BrowserEvent['payload'] = { supported: !!connection };
+    if (connection) for (const key of ['effectiveType', 'downlink', 'rtt', 'saveData'] as const) { const value = connection[key]; if (value !== undefined) payload[key] = value; }
+    this.record('CONNECTION', 'connection', payload);
   }
-
-  private installConsoleApi(): void {
-    this.safe(() => { (window as Window & { BookingObservability?: { getSnapshot: () => Record<string, unknown> } }).BookingObservability = { getSnapshot: () => this.getSnapshot() }; }, undefined);
+  captureCapabilities() {
+    const storage = (name: 'localStorage' | 'sessionStorage') => { try { const store = window[name]; store.setItem('telemetry:probe', '1'); store.removeItem('telemetry:probe'); return true; } catch { return false; } };
+    this.record('CAPABILITY', 'capabilities', {
+      performance: typeof performance !== 'undefined' && typeof performance.now === 'function', navigationTiming: this.supportsNavigationTiming(), networkInformation: !!this.connection(),
+      localStorage: storage('localStorage'), sessionStorage: storage('sessionStorage'), eventSource: typeof EventSource !== 'undefined', webSocket: typeof WebSocket !== 'undefined', serviceWorker: 'serviceWorker' in navigator, sendBeacon: typeof navigator.sendBeacon === 'function',
+    });
   }
-
-  private environment(): Record<string, unknown> {
-    return this.safe(() => {
-      const nav = navigator as Navigator & { connection?: { effectiveType?: string; downlink?: number; rtt?: number; saveData?: boolean } };
-      return {
-        viewport: { width: window.innerWidth, height: window.innerHeight },
-        connection: nav.connection ? { effectiveType: nav.connection.effectiveType, downlink: nav.connection.downlink, rtt: nav.connection.rtt, saveData: nav.connection.saveData } : null,
-        apis: { performance: typeof performance !== 'undefined', resourceTiming: typeof performance !== 'undefined' && typeof performance.getEntriesByType === 'function', storage: this.storageAvailable(), connection: Boolean(nav.connection) },
-        userAgent: nav.userAgent,
-      };
-    }, {} as Record<string, unknown>);
+  private supportsNavigationTiming(): boolean {
+    try {
+      return typeof performance !== 'undefined' && typeof performance.getEntriesByType === 'function'
+        && (typeof PerformanceNavigationTiming !== 'undefined' || performance.getEntriesByType('navigation').length > 0);
+    } catch { return false; }
   }
-
-  private readEvents(): ObservabilityEvent[] {
-    return this.safe(() => {
-      const value = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(LEGACY_STORAGE_KEY);
-      if (!value) return [];
-      const parsedValue: unknown = JSON.parse(value);
-      const parsed = Array.isArray(parsedValue) ? parsedValue as Partial<ObservabilityEvent>[] : [];
-      const events = this.realEvents(parsed.map((event) => this.normalizeEvent(event))).slice(-MAX_EVENTS);
-      if (events.length !== parsed.length || !Array.isArray(parsedValue) || value !== localStorage.getItem(STORAGE_KEY)) this.persist(events);
-      this.safe(() => localStorage.removeItem(LEGACY_STORAGE_KEY), undefined);
-      return events;
-    }, []);
+  flush() {
+    if (this.destroyed || this.sending || !this.queue.length) return;
+    this.queue = this.queue.filter(event => Date.now() - Date.parse(event.timestamp) < 300000);
+    if (!this.queue.length) return;
+    const batch = this.queue.splice(0, 20); this.sending = true; this.lastFlush = Date.now();
+    this.inFlight = this.http.post(this.endpoint, { events: batch }).subscribe({
+      next: () => { this.sending = false; this.failures = 0; },
+      error: () => { this.sending = false; if (++this.failures <= 3) this.queue = [...batch, ...this.queue].slice(-100); },
+    });
   }
-  private loadStoredValue(value: string): void {
-    this.safe(() => {
-      const parsedValue: unknown = JSON.parse(value);
-      const parsed = Array.isArray(parsedValue) ? parsedValue as Partial<ObservabilityEvent>[] : [];
-      const events = this.realEvents(parsed.map((event) => this.normalizeEvent(event))).slice(-MAX_EVENTS);
-      this.events.set(events);
-      if (events.length !== parsed.length || !Array.isArray(parsedValue)) this.persist(events);
-    }, undefined);
+  private flushBeacon() {
+    if (!this.queue.length || this.sending || typeof navigator.sendBeacon !== 'function') { this.flush(); return; }
+    const batch = this.queue.slice(0, 20);
+    try { if (navigator.sendBeacon(this.endpoint, new Blob([JSON.stringify({ events: batch })], { type: 'application/json' }))) this.queue.splice(0, batch.length); else this.flush(); } catch { this.flush(); }
   }
-  private normalizeEvent(event: Partial<ObservabilityEvent>): ObservabilityEvent {
-    const type = event.type ?? 'system';
-    const name = event.name ?? 'legacy_event';
-    const payload = event.payload ?? event.details ?? {};
-    return {
-      id: event.id ?? this.makeId(), timestamp: event.timestamp ?? new Date().toISOString(), type, name,
-      eventType: event.eventType ?? this.inferEventType(type, name), payload, details: event.details ?? payload,
-      userRole: event.userRole ?? 'GUEST',
-    };
-  }
-  private realEvents(events: ObservabilityEvent[]): ObservabilityEvent[] {
-    return events.filter((event) => event?.name !== 'demo_event' && event?.name !== 'demo_error');
-  }
-  private persist(events: ObservabilityEvent[]): void { this.safe(() => localStorage.setItem(STORAGE_KEY, JSON.stringify(events)), undefined); }
-  private storageAvailable(): boolean { return this.safe(() => { const key = `${STORAGE_KEY}:probe`; localStorage.setItem(key, '1'); localStorage.removeItem(key); return true; }, false); }
-  private safe<T>(operation: () => T, fallback: T): T { try { return operation(); } catch { return fallback; } }
-  private now(): number { return this.safe(() => performance.now(), Date.now()); }
-  private makeId(): string { return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`; }
-  private safeUrl(value: string): string { return value.split('?')[0]?.slice(0, 240) ?? ''; }
-  private apiRoute(value: string): string {
-    const path = this.safe(() => new URL(value, location.origin).pathname, value.split('?')[0] ?? '');
-    const parts = path.split('/');
-    const versionIndex = parts.findIndex((part) => /^v\d+$/i.test(part));
-    for (let index = versionIndex >= 0 ? versionIndex + 2 : 0; index < parts.length; index++) {
-      if (/^\d+$/.test(parts[index]) || /^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(parts[index])) parts[index] = ':id';
-    }
-    return parts.join('/').slice(0, 240);
-  }
-  private inferEventType(type: ObservabilityCategory, name: string): AnalyticsEventType {
-    if (type === 'http') return 'HTTP_LATENCY';
-    if (name.includes('attraction_view')) return 'VIEW_ATTRACTION';
-    if (name.includes('package_selected')) return 'SELECT_PACKAGE';
-    if (name.includes('checkout_step')) return 'CHECKOUT_STEP';
-    if (name.includes('booking_success')) return 'RESERVATION_SUCCESS';
-    if (name.includes('search')) return 'SEARCH';
-    return 'OTHER';
-  }
-  private sanitize(value: Record<string, unknown>): Record<string, unknown> {
-    const result: Record<string, unknown> = {};
-    for (const [key, item] of Object.entries(value)) {
-      if (/password|token|authorization|email|customer_name|identity_number|card|cvc/i.test(key)) continue;
-      result[key] = typeof item === 'string' ? item.slice(0, 300) : item;
-    }
-    return result;
+  ngOnDestroy() {
+    this.destroyed = true; this.cleanups.forEach(cleanup => cleanup()); this.routing?.unsubscribe(); this.inFlight?.unsubscribe();
+    if (this.timer) clearInterval(this.timer); if (this.resizeTimer) clearTimeout(this.resizeTimer); if (this.loadTimer) clearTimeout(this.loadTimer); this.queue = [];
   }
 }

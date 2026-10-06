@@ -25,10 +25,15 @@ describe('Attraction booking detail', () => {
   function load(packages: PaqueteExperiencia[] = [experience]) {
     http.expectOne(base).flush(attraction);
     http.expectOne(base + '/paquetes').flush(packages);
+    if (packages.length === 1) {
+      http.expectOne(req => req.url === base + '/availability').flush({ date: component['date'](), times: [], available_spots: 0 });
+    }
     fixture.detectChanges();
   }
   function available(pkg = experience) {
-    component['selectDate']('2099-10-10'); component['choose'](pkg);
+    component['selectDate']('2099-10-10');
+    if (component['selectedPackage']()) http.expectOne(req => req.url === base + '/availability');
+    component['choose'](pkg);
     const initial = http.expectOne(req => req.url === base + '/availability' && !req.params.has('time'));
     expect(initial.request.params.get('product_type')).toBe(pkg.tipo_experiencia);
     initial.flush({ date: '2099-10-10', times: ['11:15', '15:45'], available_spots: 7, product_type: pkg.tipo_experiencia });
@@ -173,4 +178,56 @@ describe('Attraction booking detail', () => {
     component['loadAvailability'](); const pending = http.expectOne(req => req.url === base + '/availability');
     fixture.destroy(); expect(pending.cancelled).toBe(true);
   });
+  it('automatically selects the sole real package and renders the date on initial display', () => {
+    load();
+    expect(component['selectedPackage']()?.id).toBe(experience.id);
+    expect(fixture.nativeElement.querySelector('input[type="date"]')).not.toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('Paquete seleccionado');
+  });
+  it('makes multiple-package selection explicit and shows date after clicking the actual choice', () => {
+    const other = { ...experience, id: 'second-package' }; load([experience, other]);
+    expect(fixture.nativeElement.querySelector('input[type="date"]')).toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('Seleccionar paquete');
+    fixture.nativeElement.querySelector('article button').click(); fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('input[type="date"]')).not.toBeNull();
+    http.expectOne(req => req.url === base + '/availability').flush({ date: component['date'](), times: [], available_spots: 0 });
+  });
+  it('date change clears the old time and renders loading until the real response arrives', () => {
+    load(); available(); component['selectDate']('2099-10-12'); fixture.detectChanges();
+    expect(component['selectedTime']()).toBe('');
+    expect(fixture.nativeElement.textContent).toContain('Consultando horarios');
+    const request = http.expectOne(req => req.url === base + '/availability');
+    expect(request.request.params.get('date')).toBe('2099-10-12');
+    expect(request.request.params.get('product_type')).toBe(experience.tipo_experiencia);
+    request.flush({ date: '2099-10-12', times: [], available_spots: 0 }); fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('No hay horarios disponibles para esta fecha.');
+  });
+  it('adult and child increment/decrement controls update separate counts and remove surplus ages', () => {
+    load(); component['incrementAdult'](); component['incrementAdult']();
+    component['incrementChild'](); component['incrementChild']();
+    expect(component['adults']()).toBe(2); expect(component['children']()).toBe(2);
+    expect(component['participantsForm'].controls.ninos.length).toBe(2);
+    component['decrementChild'](); component['decrementAdult']();
+    expect(component['adults']()).toBe(1); expect(component['children']()).toBe(1);
+    expect(component['participantsForm'].controls.ninos.length).toBe(1);
+  });
+  it('disables the rendered next button until valid and preserves all chosen fields on navigation', () => {
+    load();
+    const button = () => fixture.nativeElement.querySelector('aside > button') as HTMLButtonElement;
+    expect(button().disabled).toBe(true);
+    available(); participants(2, [8]); expect(button().disabled).toBe(false);
+    let request: any; TestBed.inject(BookingNavigationService).bookingRequested$.subscribe(value => request = value);
+    button().click();
+    expect(request.attraction.id).toBe(attraction.id);
+    expect(request.selection).toEqual({ experience, product_type: experience.tipo_experiencia, date: '2099-10-10', time: '11:15', num_adultos: 2, ninos: [{ edad: 8 }] });
+  });
+  it('presents policies as readable server values instead of JSON', () => {
+    load([{ ...experience, politicas_json: { cancelacion: { permitida: true, horas_antes: 36 }, edad_nino_gratis_hasta: 9 } }]);
+    const text = fixture.nativeElement.textContent;
+    expect(text).toContain('Cancelación permitida hasta 36 horas antes.');
+    expect(text).toContain('Niños hasta 9 años tienen tarifa gratuita.');
+    expect(text).not.toContain('horas_antes'); expect(text).not.toContain('edad_nino_gratis_hasta');
+    expect(fixture.nativeElement.querySelector('pre')).toBeNull();
+  });
+
 });

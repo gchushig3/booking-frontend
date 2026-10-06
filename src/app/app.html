@@ -317,7 +317,7 @@
             @if (voucher.reservation.payment; as payment) { <p class="mt-4 text-sm">Pago {{ payment.metodo_pago }} · Referencia: {{ payment.transaccion_hash }}</p> }
             <div class="mt-7 rounded-xl bg-slate-50 p-4"><p class="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Código de reserva</p><p class="mt-1 break-all font-mono text-sm font-bold text-slate-900">{{ voucher.reservation.reservation_id }}</p></div>
           </div>
-          <aside class="flex flex-col items-center justify-center border-t border-dashed border-slate-200 bg-stone-50 p-6 text-center md:border-l md:border-t-0"><p class="text-sm font-bold text-slate-800">Código para el operador</p><p class="mt-4 break-all font-mono text-sm">{{ voucher.reservation.reservation_id }}</p><button type="button" (click)="copiarCodigo(voucher.reservation.reservation_id)" class="mt-4 rounded-xl border px-4 py-2">Copiar código</button></aside>
+          <aside class="flex flex-col items-center justify-center border-t border-dashed border-slate-200 bg-stone-50 p-6 text-center md:border-l md:border-t-0"><app-reservation-qr [identifier]="voucher.reservation.reservation_id" [status]="voucher.reservation.status" /><button type="button" (click)="copiarCodigo(voucher.reservation.reservation_id)" class="mt-4 rounded-xl border px-4 py-2">Copiar código</button></aside>
         </div>
         <footer class="flex flex-col-reverse gap-3 border-t border-slate-100 bg-white px-6 py-4 sm:flex-row sm:justify-end sm:px-9"><button type="button" (click)="cerrarVoucher()" class="rounded-xl bg-teal-700 px-5 py-3 text-sm font-bold text-white transition hover:bg-teal-800">Listo</button></footer>
       </section>

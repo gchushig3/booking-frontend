@@ -158,6 +158,22 @@ describe('Admin panel of attractions', () => {
       http.expectOne(request => request.url === api + '/atracciones').flush({ data: [{ ...attraction, name: 'Nombre actualizado' }], meta: { total: 1, page: 1, lastPage: 1 } });
       http.expectNone(request => request.method === 'PUT');
     });
+    it('edits an attraction whose omitted optional price was normalized to zero by the API', () => {
+      const zeroPrice = { ...attraction, price: { currency: 'USD', total: 0 } };
+      list([zeroPrice]); component.startEdit(zeroPrice); fixture.detectChanges();
+      const form = fixture.debugElement.query(By.directive(AttractionForm)).componentInstance as AttractionForm;
+      form.form.controls.name.setValue('Edited without changing price'); form.submit();
+      const req = http.expectOne(api + '/atracciones/' + attraction.id);
+      expect(req.request.method).toBe('PATCH'); expect(req.request.body).toEqual({ name: 'Edited without changing price' });
+      req.flush({ ...zeroPrice, name: 'Edited without changing price' });
+      http.expectOne(request => request.url === api + '/atracciones').flush({ data: [zeroPrice], meta: { total: 1, page: 1, lastPage: 1 } });
+    });
+    it('still rejects changing an existing positive price to zero', () => {
+      list(); component.startEdit(attraction); fixture.detectChanges();
+      const form = fixture.debugElement.query(By.directive(AttractionForm)).componentInstance as AttractionForm;
+      form.form.controls.total.setValue(0); form.submit();
+      expect(form.error()).toBeTruthy(); http.expectNone(request => request.method === 'PATCH');
+    });
     it('does not submit invalid creation data', () => {
       list(); component.startCreate(); fixture.detectChanges();
       const form = fixture.debugElement.query(By.directive(AttractionForm)).componentInstance as AttractionForm;

@@ -1,0 +1,54 @@
+<section aria-labelledby="telemetry-title" class="space-y-6">
+  <header>
+    <h2 id="telemetry-title" class="text-2xl font-bold">Observabilidad real</h2>
+    <p class="mt-2 text-sm text-slate-600">Eventos de navegador persistidos. Transporte: {{ transport() }}. @if (transport() === 'polling') { Fallback cada 3 segundos. }</p>
+    <p role="status" class="mt-2 font-semibold"><span class="uppercase">{{ state() }}</span> @if (lastUpdate()) { · Última lectura: {{ lastUpdate() | date:'mediumTime' }} }</p>
+    @if (error()) { <p role="alert" class="mt-2 text-red-700">{{ error() }}</p> }
+  </header>
+  @if (snapshot(); as data) {
+    <section aria-label="Resumen" class="rounded-xl border bg-white p-4">
+      <h3 class="text-lg font-bold">Resumen de los últimos {{ data.summary.sampleSize }} eventos</h3>
+      <p class="text-sm text-slate-600">Muestra limitada a {{ data.summary.sampleLimit }} eventos recibidos; no representa totales históricos ni disponibilidad del sistema. Telemetría reportada por navegadores, sin identidad verificada.</p>
+      <dl class="mt-3 grid gap-3 sm:grid-cols-3">
+        <div><dt>Errores JavaScript</dt><dd>{{ javascriptErrors() }}</dd></div>
+        <div><dt>Promesas rechazadas</dt><dd>{{ rejectedPromises() }}</dd></div>
+        @for (category of countCategories; track category) { <div><dt class="text-xs font-semibold">{{ category }}</dt><dd class="text-2xl">{{ count(category) }}</dd></div> }
+      </dl>
+    </section>
+    <section aria-label="Performance" class="rounded-xl border bg-white p-4">
+      <h3 class="text-lg font-bold">Navegación y carga</h3>
+      @if (performance(); as entry) {
+        <p class="mt-2 text-sm">Última carga: {{ metric(entry, 'loadMs') | number:'1.0-2' }} ms · DOMContentLoaded: {{ metric(entry, 'domContentLoadedMs') | number:'1.0-2' }} ms</p>
+        <p class="text-xs text-slate-600">{{ entry.route }} · {{ entry.timestamp | date:'medium' }} · sesión técnica {{ entry.sessionId }}</p>
+      } @else { <p>No hay mediciones de carga disponibles en la muestra.</p> }
+      @if (routePerformance(); as entry) { <p class="mt-2 text-sm">Última navegación interna: {{ metric(entry, 'durationMs') | number:'1.0-2' }} ms · {{ entry.route }}</p> }
+      <p class="mt-2 text-sm">Navegaciones completas medidas: {{ data.summary.navigationSamples }}</p>
+      @if (data.summary.averageLoadMs !== null) { <p>Promedio de carga en la muestra: {{ data.summary.averageLoadMs | number:'1.0-2' }} ms</p> }
+      @else { <p class="text-sm text-slate-600">Promedio disponible a partir de dos mediciones de carga.</p> }
+    </section>
+    <section aria-label="Contexto del navegador" class="grid gap-4 lg:grid-cols-3">
+      @for (category of clientCategories; track category) {
+        <article class="min-w-0 rounded-xl border bg-white p-4">
+          <h3 class="font-bold">{{ category }}</h3>
+          @if (latest(category); as entry) {
+            <p class="mt-2 break-all text-xs text-slate-600">Sesión técnica: {{ entry.sessionId }} · {{ entry.timestamp | date:'medium' }}</p>
+            <pre class="mt-2 whitespace-pre-wrap break-words text-xs">{{ entry.payload | json }}</pre>
+          } @else { <p class="text-sm">Sin datos en la muestra.</p> }
+        </article>
+      }
+    </section>
+    <section aria-label="Eventos recientes">
+      <h3 class="mb-3 text-lg font-bold">Eventos recientes</h3>
+      @if (!events().length) { <p>No hay eventos persistidos todavía.</p> }
+      <ol class="space-y-3">
+        @for (entry of events(); track entry.id) {
+          <li class="min-w-0 rounded-xl border bg-white p-4">
+            <p class="flex flex-wrap gap-2 text-sm"><strong>{{ entry.category }}</strong><span>{{ entry.type }}</span><time>{{ entry.receivedAt | date:'medium' }}</time></p>
+            <p class="mt-1 break-all text-xs text-slate-600">{{ entry.route }} · sesión técnica {{ entry.sessionId }}</p>
+            <pre class="mt-2 whitespace-pre-wrap break-words text-xs">{{ entry.payload | json }}</pre>
+          </li>
+        }
+      </ol>
+    </section>
+  } @else if (!error()) { <p role="status">Consultando eventos persistidos…</p> }
+</section>

@@ -165,7 +165,12 @@ export class AttractionForm {
     if (this.sending()) return;
     this.form.markAllAsTouched();
     const value = this.form.getRawValue();
-    if (this.form.invalid || (value.priceEnabled && (!value.currency.trim() || positive(this.form.controls.total)))) {
+    // The API normalizes an omitted optional price to zero. A name-only PATCH
+    // must preserve that existing price without forcing an unrelated change.
+    const unchangedPrice = !!this.attraction() && !!this.original?.price
+      && value.currency.trim() === this.original.price.currency
+      && asNumber(value.total) === this.original.price.total;
+    if (this.form.invalid || (value.priceEnabled && (!value.currency.trim() || (!unchangedPrice && positive(this.form.controls.total))))) {
       this.error.set('Revisa los campos: nombre mínimo 3, descripción mínimo 10; precio positivo y ubicaciones válidas.');
       return;
     }

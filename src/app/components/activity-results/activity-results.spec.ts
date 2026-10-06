@@ -29,4 +29,10 @@ describe('Catalog availability searches', () => {
     params.next(convertToParamMap({ fecha: '2099-10-12' })); const pending = http.expectOne(req => req.url.endsWith('/availability'));
     fixture.destroy(); expect(pending.cancelled).toBe(true);
   });
+  it('keeps the country-wide Ecuador catalog reachable from the detail breadcrumb', () => {
+    const pending = http.expectOne(req => req.url.endsWith('/availability'));
+    params.next(convertToParamMap({ destino: 'Ecuador' }));
+    expect(pending.cancelled).toBe(true);
+    expect(fixture.componentInstance['results']()).toEqual([attraction]);
+  });
 });

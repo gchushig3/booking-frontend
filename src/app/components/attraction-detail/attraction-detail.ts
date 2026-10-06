@@ -1,6 +1,6 @@
 import { photosOf } from '../../contracts/attraction-view';
 import { httpErrorMessage } from '../../core/http-errors';
-import { CurrencyPipe, JsonPipe } from '@angular/common';
+import { CurrencyPipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
@@ -16,7 +16,7 @@ const integer = Validators.pattern(/^\d+$/);
 interface AvailabilityQuery { id: string; date: string; productType: PaqueteExperiencia['tipo_experiencia']; time?: string }
 @Component({
   selector: 'app-attraction-detail', standalone: true,
-  imports: [RouterLink, CurrencyPipe, JsonPipe, ReactiveFormsModule], templateUrl: './attraction-detail.html',
+  imports: [RouterLink, CurrencyPipe, ReactiveFormsModule], templateUrl: './attraction-detail.html',
 })
 export class AttractionDetail {
   private readonly route = inject(ActivatedRoute);
@@ -59,6 +59,39 @@ export class AttractionDetail {
     if (raw === undefined) return null;
     const age = Number(raw);
     return Number.isInteger(age) && age >= 0 && age <= 17 ? age : null;
+  });
+  protected policiesOf(pkg: PaqueteExperiencia): string[] {
+    const policies = pkg.politicas_json;
+    const lines: string[] = [];
+    const cancellation = policies['cancelacion'];
+    if (cancellation && typeof cancellation === 'object' && !Array.isArray(cancellation)) {
+      const rule = cancellation as Record<string, unknown>;
+      if (rule['permitida'] === false) lines.push('Este paquete no permite cancelaciones.');
+      if (rule['permitida'] === true) {
+        const hours = rule['horas_antes'];
+        lines.push(typeof hours === 'number' && Number.isFinite(hours) && hours >= 0
+          ? `Cancelación permitida hasta ${hours} horas antes.` : 'Este paquete permite cancelaciones.');
+      }
+    }
+    const freeAge = policies['edad_nino_gratis_hasta'];
+    if (typeof freeAge === 'number' && Number.isInteger(freeAge) && freeAge >= 0 && freeAge <= 17)
+      lines.push(`Niños hasta ${freeAge} años tienen tarifa gratuita.`);
+    // Display textual information supplied by the server without exposing its JSON structure.
+    for (const [key, value] of Object.entries(policies)) {
+      if (key !== 'cancelacion' && key !== 'edad_nino_gratis_hasta' && typeof value === 'string') lines.push(value);
+    }
+    return lines;
+  }
+  protected readonly advanceMessage = computed(() => {
+    this.participantValues(); this.scheduleValues();
+    if (!this.selectedPackage()) return 'Selecciona un paquete para elegir fecha y participantes.';
+    if (this.scheduleForm.controls.date.invalid) return 'Selecciona una fecha válida.';
+    if (this.availabilityLoading()) return 'Espera la consulta de disponibilidad.';
+    if (this.availabilityError()) return 'Reintenta la consulta de disponibilidad.';
+    if (!this.selectedTime()) return 'Selecciona un horario disponible.';
+    if (this.participantMessage()) return this.participantMessage();
+    if (this.participantsForm.invalid) return 'Revisa los participantes y completa la edad de cada niño (0 a 17 años).';
+    return '';
   });
   protected readonly participantMessage = computed(() => {
     const pkg = this.selectedPackage(); const total = this.quantity();
@@ -121,6 +154,7 @@ export class AttractionDetail {
       this.loading.set(false);
       if (!response) return;
       this.attraction.set(response.attraction); this.packages.set(response.packages.packages); this.packagesError.set(response.packages.error);
+      if (response.packages.packages.length === 1) this.choose(response.packages.packages[0]);
       this.observability.trackEvent('VIEW_ATTRACTION', { attractionId: response.attraction.id, attractionName: response.attraction.name });
     });
   }

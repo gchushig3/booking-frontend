@@ -1,7 +1,8 @@
 import { ReservationDetail } from './components/reservation-detail/reservation-detail';
+import { ReservationQr } from './components/reservation-qr/reservation-qr';
 import { ReservationRequest, ReservationResponse } from './contracts/atracciones.contracts';
 import { photosOf, locationsOf } from './contracts/attraction-view';
-import { httpErrorMessage } from './core/http-errors';
+import { checkoutErrorMessage, httpErrorMessage } from './core/http-errors';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
@@ -53,7 +54,7 @@ interface VoucherData {
 }
 
 @Component({
-  imports: [ReactiveFormsModule, ToastContainer, RouterLink, RouterOutlet, ReservationDetail],
+  imports: [ReactiveFormsModule, ToastContainer, RouterLink, RouterOutlet, ReservationDetail, ReservationQr],
   selector: 'app-root',
   styleUrl: './app.scss',
   templateUrl: './app.html',
@@ -687,7 +688,7 @@ export class App {
         if (error instanceof HttpErrorResponse && error.status === 401) {
           this.authService.logout(); this.atraccionPendienteDeReserva.set(attraction); this.seleccionPendiente.set(selection); this.abrirLogin();
         }
-        let message = httpErrorMessage(error);
+        let message = checkoutErrorMessage(error);
         if (error instanceof HttpErrorResponse && error.status === 409) {
           if (error.error?.code === 'INSUFFICIENT_AVAILABILITY') {
             message = 'Los cupos cambiaron. Estamos actualizando la disponibilidad; no se cre\u00f3 otra reserva.';

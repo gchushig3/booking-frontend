@@ -42,3 +42,6 @@ __screenshots__/
 # System files
 .DS_Store
 Thumbs.db
+
+# Temporary native Chrome profiles from the integrated test
+/e2e/native-profile-*/

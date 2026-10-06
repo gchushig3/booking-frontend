@@ -6,7 +6,11 @@
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "test:integrated": "node e2e/integrated.cjs",
+    "test:admin-observability": "node e2e/admin-observability.cjs",
+    "test:marketplace-publication": "node e2e/marketplace-publication.cjs",
+    "test:marketplace-sale": "node e2e/marketplace-sale.cjs"
   },
   "private": true,
   "packageManager": "npm@11.19.0",
@@ -17,6 +21,7 @@
     "@angular/forms": "^22.2.0",
     "@angular/platform-browser": "^22.2.0",
     "@angular/router": "^22.2.0",
+    "qrcode-generator": "2.0.4",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0"
   },
@@ -24,9 +29,11 @@
     "@angular/build": "^22.2.1",
     "@angular/cli": "^22.2.1",
     "@angular/compiler-cli": "^22.2.0",
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4.3.3",
     "autoprefixer": "^10.6.1",
     "jsdom": "^30.0.0",
+    "jsqr": "1.4.0",
     "postcss": "^8.5.28",
     "prettier": "^3.8.1",
     "tailwindcss": "^4.3.3",

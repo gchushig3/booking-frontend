@@ -14,6 +14,7 @@
 <div><dt>Cupos totales</dt><dd>{{ res.total_cupos_ocupados }}</dd></div><div><dt>Total</dt><dd>{{ res.total_price.total | currency:res.total_price.currency }}</dd></div>
 @if (res.payment; as payment) { <div><dt>Método de pago</dt><dd>{{ payment.metodo_pago }}</dd></div> }
 </dl>
+<app-reservation-qr class="mt-5 block rounded-xl border border-slate-200 p-4" [identifier]="res.reservation_id" [status]="res.status" />
 @if (res.status === 'CONFIRMADA' || res.status === 'PENDIENTE') { <button type="button" [disabled]="submitting()" (click)="cancelRequested.emit(res)" class="mt-4 rounded-xl border border-red-200 px-4 py-2 text-red-700">Cancelar reserva</button> }
 <section class="mt-6 border-t pt-4" aria-labelledby="comments-title"><h3 id="comments-title" class="text-lg font-bold">Comentarios reales de la atracción</h3>
 @if (commentsLoading()) { <p role="status">Cargando comentarios...</p> }

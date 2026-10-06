@@ -9,8 +9,9 @@ import { ReservasService } from '../../services/reservas.service';
 import { ComentariosService } from '../../services/comentarios.service';
 import { AuthService } from '../../services/auth.service';
 import { httpErrorMessage } from '../../core/http-errors';
+import { ReservationQr } from '../reservation-qr/reservation-qr';
 
-@Component({ selector: 'app-reservation-detail', imports: [ReactiveFormsModule, DatePipe, CurrencyPipe], templateUrl: './reservation-detail.html' })
+@Component({ selector: 'app-reservation-detail', imports: [ReactiveFormsModule, DatePipe, CurrencyPipe, ReservationQr], templateUrl: './reservation-detail.html' })
 export class ReservationDetail {
   readonly reservationId = input.required<string>();
   readonly closed = output<void>();

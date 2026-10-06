@@ -38,7 +38,8 @@ export class ActivityResults {
   protected readonly provinceNames = ['Pichincha', 'Guayas', 'Imbabura', 'Tungurahua', 'Galápagos', 'Napo', 'Azuay', 'Manabí', 'Pastaza', 'Cotopaxi', 'Esmeraldas', 'Chimborazo'];
 
   protected readonly results = computed(() => {
-    const query = this.normalize(this.destination());
+    const destination = this.normalize(this.destination());
+    const query = destination === 'ecuador' ? '' : destination;
     const selectedCities = this.selectedCities();
     const categories = this.selectedCategories();
     const filtered = this.attractions().filter((attraction) => {

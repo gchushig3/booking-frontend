@@ -1,0 +1,192 @@
+{
+  "requests": [
+    {
+      "path": "/api/v1/atracciones",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/auth/login",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/atracciones",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/atracciones/8f45c29f-744d-4308-b2fa-b5d2222c7ab7",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/atracciones/8f45c29f-744d-4308-b2fa-b5d2222c7ab7/paquetes",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/observabilidad/eventos",
+      "method": "POST",
+      "status": 202
+    },
+    {
+      "path": "/api/v1/atracciones/8f45c29f-744d-4308-b2fa-b5d2222c7ab7/availability",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/atracciones/8f45c29f-744d-4308-b2fa-b5d2222c7ab7/availability",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/atracciones/8f45c29f-744d-4308-b2fa-b5d2222c7ab7/availability",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/atracciones/8f45c29f-744d-4308-b2fa-b5d2222c7ab7/availability",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/atracciones/8f45c29f-744d-4308-b2fa-b5d2222c7ab7/reservations",
+      "method": "POST",
+      "status": 201,
+      "request": {
+        "paquete_id": "3b0dbfb6-6378-4267-b891-bca43db50e54",
+        "date": "2026-10-07",
+        "time": "08:00",
+        "num_adultos": 2,
+        "ninos": [
+          {
+            "edad": 8
+          }
+        ],
+        "customer_name": "[test client]",
+        "customer_email": "[redacted]",
+        "metodo_pago": "CREDIT_CARD"
+      },
+      "bearerPresent": true,
+      "idempotencyPresent": true,
+      "response": {
+        "reservation_id": "1b624fe7-b65f-4736-956f-24c7a429a1d6",
+        "status": "CONFIRMADA",
+        "ticket_count": 3,
+        "num_adultos": 2,
+        "num_ninos": 1,
+        "total_cupos_ocupados": 3,
+        "product_type": "GUIDED_TOUR",
+        "total_price": {
+          "currency": "USD",
+          "total": 36
+        },
+        "date": "2026-10-07",
+        "time": "08:00",
+        "attraction": {
+          "id": "8f45c29f-744d-4308-b2fa-b5d2222c7ab7",
+          "name": "Centro Histórico de Quito",
+          "image_url": "https://images.unsplash.com/photo-1519501025264-65ba15a82390?auto=format&fit=crop&w=1200&q=80"
+        },
+        "payment": {
+          "status": "SUCCESS",
+          "metodo_pago": "CREDIT_CARD",
+          "monto_pagado": 36,
+          "transaccion_hash": "5334ff3625150f0496a92dcf91a542de5ed1435c48d46b3198b598e4d2871f45",
+          "fecha_pago": "2026-10-06T12:54:45.933Z"
+        }
+      }
+    },
+    {
+      "path": "/api/v1/atracciones/8f45c29f-744d-4308-b2fa-b5d2222c7ab7/availability",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/atracciones/reservations",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/atracciones/reservations/1b624fe7-b65f-4736-956f-24c7a429a1d6",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/atracciones/8f45c29f-744d-4308-b2fa-b5d2222c7ab7/comentarios",
+      "method": "GET",
+      "status": 200
+    }
+  ],
+  "errors": [],
+  "loginStatus": 200,
+  "claims": {
+    "role": "CLIENTE",
+    "notExpired": true
+  },
+  "attractionId": "8f45c29f-744d-4308-b2fa-b5d2222c7ab7",
+  "uncertainAttempt": {
+    "backendStatus": 201,
+    "request": {
+      "paquete_id": "3b0dbfb6-6378-4267-b891-bca43db50e54",
+      "date": "2026-10-07",
+      "time": "08:00",
+      "num_adultos": 2,
+      "ninos": [
+        {
+          "edad": 8
+        }
+      ],
+      "customer_name": "[test client]",
+      "customer_email": "[redacted]",
+      "metodo_pago": "CREDIT_CARD"
+    },
+    "response": {
+      "reservation_id": "1b624fe7-b65f-4736-956f-24c7a429a1d6",
+      "status": "CONFIRMADA",
+      "ticket_count": 3,
+      "num_adultos": 2,
+      "num_ninos": 1,
+      "total_cupos_ocupados": 3,
+      "product_type": "GUIDED_TOUR",
+      "total_price": {
+        "currency": "USD",
+        "total": 36
+      },
+      "date": "2026-10-07",
+      "time": "08:00",
+      "attraction": {
+        "id": "8f45c29f-744d-4308-b2fa-b5d2222c7ab7",
+        "name": "Centro Histórico de Quito",
+        "image_url": "https://images.unsplash.com/photo-1519501025264-65ba15a82390?auto=format&fit=crop&w=1200&q=80"
+      },
+      "payment": {
+        "status": "SUCCESS",
+        "metodo_pago": "CREDIT_CARD",
+        "monto_pagado": 36,
+        "transaccion_hash": "5334ff3625150f0496a92dcf91a542de5ed1435c48d46b3198b598e4d2871f45",
+        "fecha_pago": "2026-10-06T12:54:45.933Z"
+      }
+    }
+  },
+  "retryButtonDisabled": false,
+  "retryKeyStable": true,
+  "sameReservationReplayed": true,
+  "checkoutStatus": 201,
+  "reservationId": "1b624fe7-b65f-4736-956f-24c7a429a1d6",
+  "packageId": "3b0dbfb6-6378-4267-b891-bca43db50e54",
+  "inMyReservations": true,
+  "detailOpened": true,
+  "persisted": {
+    "id": "1b624fe7-b65f-4736-956f-24c7a429a1d6",
+    "paquete_id": "3b0dbfb6-6378-4267-b891-bca43db50e54",
+    "num_adultos": 2,
+    "num_ninos": 1,
+    "edades_ninos": [
+      8
+    ],
+    "total_cupos_ocupados": 3,
+    "status": "CONFIRMADA"
+  }
+}

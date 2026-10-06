@@ -1,0 +1,58 @@
+{
+  "marker": "admin-telemetry-c2b17090-501a-459b-869f-e0c9ea12a264",
+  "mechanism": "SSE",
+  "streamConnections": 1,
+  "dashboardReloadsAfterConnection": 0,
+  "checks": {
+    "adminAccess": true,
+    "crud": {
+      "create": 201,
+      "edit": 200,
+      "deactivate": 204,
+      "persisted": true
+    },
+    "reservations": {
+      "status": 200,
+      "count": 30
+    },
+    "clientApiDenied": {
+      "statuses": [
+        403,
+        403,
+        403
+      ],
+      "sessionPreserved": true
+    },
+    "clientRouteDenied": true,
+    "updatedWithoutManualRefresh": true,
+    "postgresqlPersistence": true
+  },
+  "stage": "complete",
+  "streamContentType": "text/event-stream",
+  "visibility": {
+    "before": "visible",
+    "hidden": "hidden",
+    "after": "visible"
+  },
+  "viewport": {
+    "width": 1024,
+    "height": 720
+  },
+  "typesPersisted": [
+    "capabilities",
+    "viewport",
+    "connection",
+    "navigation_timing",
+    "route_navigation",
+    "click",
+    "http_request",
+    "application_event",
+    "angular_error",
+    "window_error",
+    "unhandled_rejection",
+    "resource_error",
+    "visibility_change"
+  ],
+  "sensitiveLeakCount": 0,
+  "result": "PASS"
+}

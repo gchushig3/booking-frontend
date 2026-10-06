@@ -14,6 +14,7 @@ import { AuthService } from '../../services/auth.service';
       <nav aria-label="Administración" class="my-6 flex flex-wrap gap-3">
         <a routerLink="/admin/atracciones" routerLinkActive="bg-teal-100" class="rounded-xl border border-stone-300 px-4 py-2 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700">Atracciones</a>
         <a routerLink="/admin/reservas" routerLinkActive="bg-teal-100" class="rounded-xl border border-stone-300 px-4 py-2 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700">Reservas</a>
+        <a routerLink="/admin/observabilidad" routerLinkActive="bg-teal-100" class="rounded-xl border border-stone-300 px-4 py-2 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700">Observabilidad</a>
       </nav>
       <router-outlet />
     </main>

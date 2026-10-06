@@ -1,0 +1,140 @@
+{
+  "requests": [
+    {
+      "session": "ADMIN",
+      "path": "/api/v1/atracciones",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "session": "ADMIN",
+      "path": "/api/v1/atracciones",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "session": "CLIENTE",
+      "path": "/api/v1/atracciones",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "session": "ADMIN",
+      "path": "/api/v1/atracciones",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "session": "ADMIN",
+      "path": "/api/v1/atracciones",
+      "method": "POST",
+      "status": 201
+    },
+    {
+      "session": "ADMIN",
+      "path": "/api/v1/atracciones",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "session": "CLIENTE",
+      "path": "/api/v1/atracciones",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "session": "CLIENTE",
+      "path": "/api/v1/atracciones",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "session": "CLIENTE",
+      "path": "/api/v1/atracciones/ac98bc6d-87b7-43b6-8ec4-9fc5f269f17e",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "session": "CLIENTE",
+      "path": "/api/v1/atracciones/ac98bc6d-87b7-43b6-8ec4-9fc5f269f17e/paquetes",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "session": "ADMIN",
+      "path": "/api/v1/atracciones",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "session": "ADMIN",
+      "path": "/api/v1/atracciones",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "session": "ADMIN",
+      "path": "/api/v1/atracciones",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "session": "ADMIN",
+      "path": "/api/v1/atracciones/ac98bc6d-87b7-43b6-8ec4-9fc5f269f17e",
+      "method": "PATCH",
+      "status": 200
+    },
+    {
+      "session": "ADMIN",
+      "path": "/api/v1/atracciones",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "session": "CLIENTE",
+      "path": "/api/v1/atracciones",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "session": "CLIENTE",
+      "path": "/api/v1/atracciones",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "session": "ADMIN",
+      "path": "/api/v1/atracciones/ac98bc6d-87b7-43b6-8ec4-9fc5f269f17e",
+      "method": "DELETE",
+      "status": 204
+    },
+    {
+      "session": "ADMIN",
+      "path": "/api/v1/atracciones",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "session": "CLIENTE",
+      "path": "/api/v1/atracciones",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "session": "CLIENTE",
+      "path": "/api/v1/atracciones",
+      "method": "GET",
+      "status": 200
+    }
+  ],
+  "checks": {
+    "created": 201,
+    "visibleInMarketplace": true,
+    "updatedInMarketplace": true,
+    "deactivatedInMarketplace": true,
+    "detailAfterDeactivation": 404,
+    "persistedSoftDelete": true
+  },
+  "attractionId": "ac98bc6d-87b7-43b6-8ec4-9fc5f269f17e",
+  "result": "PASS"
+}

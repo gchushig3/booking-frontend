@@ -41,6 +41,14 @@ describe('Reservation detail and real comments', () => {
     [...fixture.nativeElement.querySelectorAll('button')].find((b: any) => b.textContent.includes('Cancelar reserva')).click();
     expect(emitted).toEqual(reservation);
   });
+  it('renders the QR identifier from the individual real reservation GET, not the input alone', () => {
+    const idFromResponse = 'a1234567-1234-4234-8234-123456789abc';
+    const req = http.expectOne(detailUrl); expect(req.request.method).toBe('GET');
+    req.flush({ ...reservation, reservation_id: idFromResponse }); http.expectOne(commentsUrl).flush([]); fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-reservation-qr [data-reservation-code]').textContent).toContain(idFromResponse);
+    expect(fixture.nativeElement.querySelector('app-reservation-qr svg')).toBeTruthy();
+    http.expectNone(req => !req.url.startsWith('/api/v1/'));
+  });
   it('does not offer cancellation or commenting for a cancelled reservation', () => {
     load('CANCELADA'); expect(text()).not.toContain('Cancelar reserva'); expect(text()).not.toContain('Escribir comentario');
     validForm(); component.submit(); http.expectNone(req => req.method === 'POST');

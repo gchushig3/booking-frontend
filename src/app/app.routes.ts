@@ -1,6 +1,5 @@
 import { Routes } from '@angular/router';
 import { Component } from '@angular/core';
-import { ObservabilityDashboard } from './components/observability-dashboard/observability-dashboard';
 import { ActivityResults } from './components/activity-results/activity-results';
 import { AttractionDetail } from './components/attraction-detail/attraction-detail';
 import { adminGuard } from './guards/admin.guard';
@@ -20,7 +19,8 @@ export const routes: Routes = [
     { path: '', pathMatch: 'full', redirectTo: 'atracciones' },
     { path: 'atracciones', canActivate: [adminGuard], loadComponent: () => import('./features/admin/admin-attractions').then(m => m.AdminAttractions) },
     { path: 'reservas', canActivate: [adminGuard], loadComponent: () => import('./features/admin/admin-reservations').then(m => m.AdminReservations) },
+    { path: 'observabilidad', canActivate: [adminGuard], loadComponent: () => import('./features/admin/admin-observability').then(m => m.AdminObservability) },
   ] },
-  { path: 'observabilidad', component: ObservabilityDashboard, canActivate: [adminGuard] },
+  { path: 'observabilidad', pathMatch: 'full', redirectTo: 'admin/observabilidad' },
   { path: '**', redirectTo: '' },
 ];

@@ -1,0 +1,254 @@
+{
+  "requests": [
+    {
+      "path": "/api/v1/atracciones",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/auth/login",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/atracciones",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/atracciones/8f45c29f-744d-4308-b2fa-b5d2222c7ab7",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/atracciones/8f45c29f-744d-4308-b2fa-b5d2222c7ab7/paquetes",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/observabilidad/eventos",
+      "method": "POST",
+      "status": 202
+    },
+    {
+      "path": "/api/v1/atracciones/8f45c29f-744d-4308-b2fa-b5d2222c7ab7/availability",
+      "method": "GET",
+      "status": 200,
+      "query": {
+        "date": "2026-10-06",
+        "product_type": "GUIDED_TOUR"
+      },
+      "response": {
+        "date": "2026-10-06",
+        "available_spots": 15,
+        "times": [
+          "08:00"
+        ],
+        "product_type": "GUIDED_TOUR"
+      }
+    },
+    {
+      "path": "/api/v1/atracciones/8f45c29f-744d-4308-b2fa-b5d2222c7ab7/availability",
+      "method": "GET",
+      "status": 200,
+      "query": {
+        "date": "2026-10-06",
+        "product_type": "GUIDED_TOUR",
+        "time": "08:00"
+      },
+      "response": {
+        "date": "2026-10-06",
+        "available_spots": 15,
+        "times": [
+          "08:00"
+        ],
+        "product_type": "GUIDED_TOUR",
+        "time": "08:00"
+      }
+    },
+    {
+      "path": "/api/v1/atracciones/8f45c29f-744d-4308-b2fa-b5d2222c7ab7/availability",
+      "method": "GET",
+      "status": 200,
+      "query": {
+        "date": "2026-10-06",
+        "product_type": "GUIDED_TOUR"
+      },
+      "response": {
+        "date": "2026-10-06",
+        "available_spots": 15,
+        "times": [
+          "08:00"
+        ],
+        "product_type": "GUIDED_TOUR"
+      }
+    },
+    {
+      "path": "/api/v1/atracciones/8f45c29f-744d-4308-b2fa-b5d2222c7ab7/availability",
+      "method": "GET",
+      "status": 200,
+      "query": {
+        "date": "2026-10-07",
+        "product_type": "GUIDED_TOUR"
+      },
+      "response": {
+        "date": "2026-10-07",
+        "available_spots": 6,
+        "times": [
+          "08:00"
+        ],
+        "product_type": "GUIDED_TOUR"
+      }
+    },
+    {
+      "path": "/api/v1/atracciones/8f45c29f-744d-4308-b2fa-b5d2222c7ab7/availability",
+      "method": "GET",
+      "status": 200,
+      "query": {
+        "date": "2026-10-07",
+        "product_type": "GUIDED_TOUR",
+        "time": "08:00"
+      },
+      "response": {
+        "date": "2026-10-07",
+        "available_spots": 6,
+        "times": [
+          "08:00"
+        ],
+        "product_type": "GUIDED_TOUR",
+        "time": "08:00"
+      }
+    },
+    {
+      "path": "/api/v1/atracciones/8f45c29f-744d-4308-b2fa-b5d2222c7ab7/availability",
+      "method": "GET",
+      "status": 200,
+      "query": {
+        "date": "2026-10-07",
+        "product_type": "GUIDED_TOUR",
+        "time": "08:00"
+      },
+      "response": {
+        "date": "2026-10-07",
+        "available_spots": 6,
+        "times": [
+          "08:00"
+        ],
+        "product_type": "GUIDED_TOUR",
+        "time": "08:00"
+      }
+    },
+    {
+      "path": "/api/v1/atracciones/8f45c29f-744d-4308-b2fa-b5d2222c7ab7/reservations",
+      "method": "POST",
+      "status": 201,
+      "request": {
+        "paquete_id": "3b0dbfb6-6378-4267-b891-bca43db50e54",
+        "date": "2026-10-07",
+        "time": "08:00",
+        "num_adultos": 2,
+        "ninos": [
+          {
+            "edad": 8
+          }
+        ],
+        "customer_name": "[test client]",
+        "customer_email": "[redacted]",
+        "metodo_pago": "PAYPAL"
+      },
+      "bearerPresent": true,
+      "idempotencyPresent": true,
+      "response": {
+        "reservation_id": "8bee5920-7e47-4a48-946b-29d96a48779c",
+        "status": "CONFIRMADA",
+        "ticket_count": 3,
+        "num_adultos": 2,
+        "num_ninos": 1,
+        "total_cupos_ocupados": 3,
+        "product_type": "GUIDED_TOUR",
+        "total_price": {
+          "currency": "USD",
+          "total": 36
+        },
+        "date": "2026-10-07",
+        "time": "08:00",
+        "attraction": {
+          "id": "8f45c29f-744d-4308-b2fa-b5d2222c7ab7",
+          "name": "Centro Histórico de Quito",
+          "image_url": "https://images.unsplash.com/photo-1519501025264-65ba15a82390?auto=format&fit=crop&w=1200&q=80"
+        },
+        "payment": {
+          "status": "SUCCESS",
+          "metodo_pago": "PAYPAL",
+          "monto_pagado": 36,
+          "transaccion_hash": "e6a83815f1b7dec91c234fd2d491a445a1e34b1cf794e7fcc293b8ccb9153736",
+          "fecha_pago": "2026-10-06T13:52:21.902Z"
+        }
+      }
+    },
+    {
+      "path": "/api/v1/atracciones/8f45c29f-744d-4308-b2fa-b5d2222c7ab7/availability",
+      "method": "GET",
+      "status": 200,
+      "query": {
+        "date": "2026-10-07",
+        "product_type": "GUIDED_TOUR",
+        "time": "08:00"
+      },
+      "response": {
+        "date": "2026-10-07",
+        "available_spots": 3,
+        "times": [
+          "08:00"
+        ],
+        "product_type": "GUIDED_TOUR",
+        "time": "08:00"
+      }
+    },
+    {
+      "path": "/api/v1/atracciones/reservations",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/observabilidad/eventos",
+      "method": "POST",
+      "status": 202
+    },
+    {
+      "path": "/api/v1/atracciones/reservations/8bee5920-7e47-4a48-946b-29d96a48779c",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/atracciones/8f45c29f-744d-4308-b2fa-b5d2222c7ab7/comentarios",
+      "method": "GET",
+      "status": 200
+    }
+  ],
+  "errors": [],
+  "loginStatus": 200,
+  "claims": {
+    "role": "CLIENTE",
+    "notExpired": true
+  },
+  "attractionId": "8f45c29f-744d-4308-b2fa-b5d2222c7ab7",
+  "viewport": 390,
+  "dateVisible": true,
+  "checkoutStatus": 201,
+  "reservationId": "8bee5920-7e47-4a48-946b-29d96a48779c",
+  "packageId": "3b0dbfb6-6378-4267-b891-bca43db50e54",
+  "inMyReservations": true,
+  "detailOpened": true,
+  "persisted": {
+    "id": "8bee5920-7e47-4a48-946b-29d96a48779c",
+    "paquete_id": "3b0dbfb6-6378-4267-b891-bca43db50e54",
+    "num_adultos": 2,
+    "num_ninos": 1,
+    "edades_ninos": [
+      8
+    ],
+    "total_cupos_ocupados": 3,
+    "status": "CONFIRMADA"
+  }
+}

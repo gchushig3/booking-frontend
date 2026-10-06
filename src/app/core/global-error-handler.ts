@@ -8,8 +8,7 @@ export class GlobalErrorHandler implements ErrorHandler {
   handleError(error: unknown): void {
     try {
       this.injector.get(ObservabilityService).track('js', 'angular_error', {
-        message: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack?.slice(0, 1000) : undefined,
+        message: error instanceof Error ? error.message : typeof error === 'string' ? error : 'Non-string Angular error (content omitted)',
       });
     } catch { /* Error reporting must never cause a second application error. */ }
     console.error(error);
