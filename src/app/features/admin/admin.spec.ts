@@ -140,6 +140,7 @@ describe('Admin panel of attractions', () => {
       expect(refresh.request.params.get('page')).toBe('1');
       refresh.flush({ data: [{ ...attraction, name: dto().name }], meta: { total: 1, page: 1, lastPage: 1 } });
       fixture.detectChanges();
+      http.expectOne(api + '/atracciones/' + attraction.id + '/paquetes').flush([]);
       expect(fixture.nativeElement.textContent).toContain('Atracción creada');
       expect(fixture.nativeElement.textContent).toContain('Tour Cotopaxi');
     });
@@ -191,6 +192,18 @@ describe('Admin panel of attractions', () => {
       expect(form.error()).toContain('no permite borrar');
       http.expectNone(request => request.method === 'PATCH');
     });
+    it('searches the catalog by name and resets pagination', () => {
+      list();
+      component.page.set(3);
+      component.searchText.set('  Cotopaxi  ');
+      component.search();
+      const req = http.expectOne(request => request.url === api + '/atracciones');
+      expect(req.request.params.get('q')).toBe('Cotopaxi');
+      expect(req.request.params.get('page')).toBe('1');
+      req.flush({ data: [attraction], meta: { total: 1, page: 1, lastPage: 1 } });
+      expect(component.total()).toBe(1);
+    });
+
     it('fetches only the requested page', () => {
       list([attraction], { total: 20, page: 1, lastPage: 2 });
       component.goTo(2);

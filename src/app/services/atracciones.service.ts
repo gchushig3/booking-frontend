@@ -12,8 +12,8 @@ export class AtraccionesService {
   private readonly http = inject(HttpClient);
   private readonly endpoint = `${inject(API_URL)}/atracciones`;
 
-  obtenerPagina(page = 1, limit = 10): Observable<AtraccionesListResponse> {
-    return this.http.get<AtraccionesListResponse>(this.endpoint, { params: { page: String(page), limit: String(limit) } });
+  obtenerPagina(page = 1, limit = 10, q = ''): Observable<AtraccionesListResponse> {
+    return this.http.get<AtraccionesListResponse>(this.endpoint, { params: { page: String(page), limit: String(limit), ...(q ? { q } : {}) } });
   }
   crearAtraccion(body: CreateAttractionRequest): Observable<Atraccion> { return this.http.post<Atraccion>(this.endpoint, body); }
   editarAtraccion(id: string, body: UpdateAttractionRequest): Observable<Atraccion> { return this.http.patch<Atraccion>(`${this.endpoint}/${encodeURIComponent(id)}`, body); }
@@ -43,6 +43,15 @@ export class AtraccionesService {
 
   obtenerPaquetes(id: string): Observable<PaqueteExperiencia[]> {
     return this.http.get<PaqueteExperiencia[]>(`${this.endpoint}/${encodeURIComponent(id)}/paquetes`);
+  }
+
+  guardarPaquete(id: string, body: { nombre_paquete: string; tipo_experiencia: ProductType; precio_unitario: number; min_participantes: number; max_participantes: number | null }, packageId?: string) {
+    const url = `${this.endpoint}/${encodeURIComponent(id)}/paquetes`;
+    return packageId ? this.http.put(`${url}/${encodeURIComponent(packageId)}`, body) : this.http.post(url, body);
+  }
+
+  guardarTurno(id: string, body: { date: string; time: string; capacidad_total: number }) {
+    return this.http.put(`${this.endpoint}/${encodeURIComponent(id)}/availability`, body);
   }
 
   obtenerDisponibilidad(atraccionId: string, date: string, productType?: ProductType, time?: string): Observable<DisponibilidadAtraccion> {

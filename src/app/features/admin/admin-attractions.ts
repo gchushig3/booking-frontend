@@ -1,3 +1,4 @@
+import { BookingSettings } from './booking-settings';
 import { CurrencyPipe } from '@angular/common';
 import { afterRenderEffect, Component, DestroyRef, ElementRef, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -10,7 +11,7 @@ import { AttractionForm } from './attraction-form';
 
 @Component({
   selector: 'app-admin-attractions',
-  imports: [CurrencyPipe, AttractionForm],
+  imports: [CurrencyPipe, AttractionForm, BookingSettings],
   templateUrl: './admin-attractions.html',
 })
 export class AdminAttractions {
@@ -18,6 +19,9 @@ export class AdminAttractions {
   private readonly admin = inject(AdminApiService);
   private readonly toast = inject(ToastService);
   private readonly destroy = inject(DestroyRef);
+  readonly query = signal('');
+  readonly searchText = signal('');
+  readonly availabilityFor = signal<Atraccion | null>(null);
   readonly loading = signal(false);
   readonly error = signal('');
   readonly rows = signal<Atraccion[]>([]);
@@ -49,7 +53,7 @@ export class AdminAttractions {
     if (this.loading()) return;
     this.loading.set(true);
     this.error.set('');
-    this.api.obtenerPagina(this.page(), this.limit).pipe(takeUntilDestroyed(this.destroy)).subscribe({
+    this.api.obtenerPagina(this.page(), this.limit, this.query()).pipe(takeUntilDestroyed(this.destroy)).subscribe({
       next: (response) => {
         this.rows.set(response.data);
         this.total.set(response.meta.total);
@@ -65,6 +69,14 @@ export class AdminAttractions {
         this.loading.set(false);
       },
     });
+  }
+
+  search() {
+    if (this.loading()) return;
+    this.query.set(this.searchText().trim());
+    this.page.set(1);
+    this.availabilityFor.set(null);
+    this.load();
   }
 
   goTo(page: number) {
@@ -95,7 +107,8 @@ export class AdminAttractions {
     this.feedback.set(created ? `Atracción creada: ${attraction.name}` : `Atracción actualizada: ${attraction.name}`);
     this.toast.mostrar('exito', this.feedback());
     this.closeForm();
-    if (created) this.page.set(1);
+    if (created) { this.page.set(1); this.query.set(''); this.searchText.set(''); }
+    if (created) this.availabilityFor.set(attraction);
     this.load();
   }
 

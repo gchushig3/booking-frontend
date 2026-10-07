@@ -9,6 +9,11 @@
     }
   </div>
 
+  @for (selected of mode() === 'list' && availabilityFor() ? [availabilityFor()!] : []; track selected.id) {
+    <app-booking-settings [attraction]="selected" />
+    <button type="button" (click)="availabilityFor.set(null)" class="rounded-lg border px-4 py-2">Cerrar disponibilidad</button>
+  }
+
   @if (feedback()) {
     <p role="status" class="mt-4 text-sm text-teal-800">{{ feedback() }}</p>
   }
@@ -16,6 +21,12 @@
   @if (mode() !== 'list') {
     <app-admin-attraction-form [attraction]="editing()" (saved)="onSaved($event)" (cancelled)="closeForm()" />
   } @else {
+    <form (submit)="$event.preventDefault(); search()" class="mt-4 flex flex-wrap items-end gap-3">
+      <label class="flex-1">Buscar atracción por nombre
+        <input type="search" [value]="searchText()" (input)="searchText.set($any($event.target).value)" placeholder="Nombre de la atracción" class="mt-1 block w-full rounded-lg border border-stone-300 p-2">
+      </label>
+      <button type="submit" [disabled]="loading()" class="rounded-lg bg-teal-700 px-4 py-2 text-white">Buscar</button>
+    </form>
     <button type="button" (click)="load()" [disabled]="loading()" class="my-4 rounded-xl border border-stone-300 px-4 py-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700">Actualizar listado</button>
     @if (loading()) {
       <p role="status">Cargando atracciones...</p>
@@ -25,7 +36,7 @@
         <button type="button" (click)="load()" class="ml-2 rounded-lg border border-stone-300 px-3 py-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700">Reintentar</button>
       </div>
     } @else if (!rows().length) {
-      <p>No hay atracciones para administrar.</p>
+      <p>{{ query() ? 'No se encontraron atracciones con ese nombre.' : 'No hay atracciones para administrar.' }}</p>
     } @else {
       <div class="mt-4 space-y-3 md:hidden">
         @for (item of rows(); track item.id) {
@@ -35,6 +46,7 @@
             <p class="text-sm">{{ item.categoria }} · {{ item.precioBase | currency:(item.price?.currency || 'USD') }}</p>
             <div class="mt-3 flex flex-wrap gap-2">
               <button type="button" (click)="startEdit(item)" class="rounded-lg border px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700">Editar</button>
+              <button type="button" (click)="availabilityFor.set(item)" class="rounded-lg border px-3 py-2 text-sm">Experiencias y disponibilidad</button>
               <button type="button" (click)="togglePackages(item)" class="rounded-lg border px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700">{{ packagesFor() === item.id ? 'Ocultar paquetes' : 'Ver paquetes' }}</button>
               <button type="button" (click)="askDeactivate(item)" class="rounded-lg border border-red-200 px-3 py-2 text-sm text-red-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700">Desactivar atracción</button>
             </div>
@@ -63,7 +75,8 @@
                 <td class="p-3">
                   <div class="flex flex-wrap gap-2">
                     <button type="button" (click)="startEdit(item)" class="rounded-lg border px-3 py-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700">Editar</button>
-                    <button type="button" (click)="togglePackages(item)" class="rounded-lg border px-3 py-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700">{{ packagesFor() === item.id ? 'Ocultar paquetes' : 'Ver paquetes' }}</button>
+                    <button type="button" (click)="availabilityFor.set(item)" class="rounded-lg border px-3 py-2 text-sm">Experiencias y disponibilidad</button>
+              <button type="button" (click)="togglePackages(item)" class="rounded-lg border px-3 py-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700">{{ packagesFor() === item.id ? 'Ocultar paquetes' : 'Ver paquetes' }}</button>
                     <button type="button" (click)="askDeactivate(item)" class="rounded-lg border border-red-200 px-3 py-2 text-red-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700">Desactivar atracción</button>
                   </div>
                 </td>

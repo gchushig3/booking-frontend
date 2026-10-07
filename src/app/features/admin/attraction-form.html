@@ -1,6 +1,6 @@
 <section class="my-6 rounded-2xl border border-stone-200 bg-white p-6" aria-labelledby="attraction-form-title">
   <h3 id="attraction-form-title" class="text-xl font-bold">{{ attraction() ? 'Editar atracción' : 'Crear atracción' }}</h3>
-  <p class="mt-2 text-sm text-slate-600">El formulario envía el DTO de atracción. Los paquetes reservables no se editan aquí: no hay contrato ADMIN para crearlos.</p>
+  <p class="mt-2 text-sm text-slate-600">Despu?s de guardar, configura las experiencias y la disponibilidad de la atracción desde el panel de administraci?n.</p>
   <form [formGroup]="form" (ngSubmit)="submit()" class="mt-4 space-y-4" novalidate>
     <label class="block">
       <span class="mb-1 block text-sm font-semibold">Nombre</span>
