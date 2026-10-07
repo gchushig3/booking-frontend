@@ -24,7 +24,7 @@ export class ObservabilityApiService {
         try {
           while (!subscriber.closed) {
             const chunk = await reader.read();
-            if (chunk.done) throw new Error('Reconectando SSE.');
+            if (chunk.done) { subscriber.complete(); return; }
             buffer += decoder.decode(chunk.value, { stream: true }).replace(/\r/g, '');
             if (buffer.length > 512 * 1024) throw new Error('Stream demasiado grande.');
             let boundary: number;

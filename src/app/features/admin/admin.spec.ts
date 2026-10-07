@@ -11,6 +11,7 @@ import { attraction, reservation } from '../../testing/booking.fixtures';
 import { AdminAttractions } from './admin-attractions';
 import { AdminReservations } from './admin-reservations';
 import { AttractionForm } from './attraction-form';
+import { BookingSettings } from './booking-settings';
 import { CreateAttractionRequest } from '../../contracts/admin.contracts';
 
 const api = '/api/v1';
@@ -212,10 +213,10 @@ describe('Admin panel of attractions', () => {
       req.flush({ data: [attraction], meta: { total: 20, page: 2, lastPage: 2 } });
     });
     it('reads packages without mutation endpoints', () => {
-      list(); component.togglePackages(attraction);
+      list(); component.openAvailability(attraction); fixture.detectChanges();
       const req = http.expectOne(api + '/atracciones/' + attraction.id + '/paquetes');
       expect(req.request.method).toBe('GET'); req.flush([]);
-      expect(component.packagesLoading()).toBe(false);
+      expect((fixture.debugElement.query(By.directive(BookingSettings)).componentInstance as BookingSettings).packagesLoading()).toBe(false);
     });
     it('cancels deactivation using Escape without sending DELETE', () => {
       list(); component.askDeactivate(attraction); fixture.detectChanges();

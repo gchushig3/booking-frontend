@@ -7,7 +7,7 @@ import { Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormArray, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { catchError, forkJoin, map, of, Subject, switchMap, tap } from 'rxjs';
+import { catchError, filter, forkJoin, fromEvent, map, merge, of, Subject, switchMap, tap, timeout, timer } from 'rxjs';
 import { Atraccion, DisponibilidadAtraccion, PaqueteExperiencia } from '../../contracts/atracciones.contracts';
 import { AtraccionesService } from '../../services/atracciones.service';
 import { BookingNavigationService } from '../../services/booking-navigation.service';
@@ -27,11 +27,13 @@ export class AttractionDetail {
   private readonly reservas = inject(ReservasService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly availabilityQueries = new Subject<AvailabilityQuery | null>();
+  private readonly bookingRefreshes = new Subject<void>();
   protected readonly attraction = signal<Atraccion | null>(null);
   protected readonly loading = signal(true);
   protected readonly notFound = signal(false);
   protected readonly error = signal('');
   protected readonly packagesError = signal('');
+  protected readonly packagesRefreshing = signal(false);
   protected readonly packages = signal<PaqueteExperiencia[]>([]);
   protected readonly selectedPackage = signal<PaqueteExperiencia | null>(null);
   protected readonly availability = signal<DisponibilidadAtraccion | null>(null);
@@ -91,6 +93,8 @@ export class AttractionDetail {
   protected readonly advanceMessage = computed(() => {
     this.participantValues(); this.scheduleValues();
     if (!this.selectedPackage()) return 'Selecciona un paquete para elegir fecha y participantes.';
+    if (this.packagesRefreshing()) return 'Actualizando experiencias y disponibilidad.';
+    if (this.packagesError()) return 'Reintenta la consulta de experiencias.';
     if (this.scheduleForm.controls.date.invalid) return 'Selecciona una fecha válida.';
     if (this.availabilityLoading()) return 'Espera la consulta de disponibilidad.';
     if (this.availabilityError()) return 'Reintenta la consulta de disponibilidad.';
@@ -110,7 +114,7 @@ export class AttractionDetail {
   protected readonly canAdvance = computed(() => {
     this.participantValues(); this.scheduleValues();
     return Boolean(this.selectedPackage() && this.participantsForm.valid && this.scheduleForm.valid && !this.participantMessage()
-      && !this.availabilityLoading() && !this.availabilityError() && this.availability()?.times.includes(this.selectedTime())
+      && !this.packagesRefreshing() && !this.packagesError() && !this.availabilityLoading() && !this.availabilityError() && this.availability()?.times.includes(this.selectedTime())
       && this.availability()!.available_spots >= this.quantity());
   });
   ngOnInit(): void {
@@ -120,6 +124,7 @@ export class AttractionDetail {
         this.availabilityError.set(''); this.availabilityLoading.set(Boolean(query));
         if (!query) return of(null);
         return this.service.obtenerDisponibilidad(query.id, query.date, query.productType, query.time).pipe(
+          timeout({ first: 10000 }),
           map(result => ({ query, result, error: '' })),
           catchError(error => of({ query, result: null, error: httpErrorMessage(error) })),
         );
@@ -144,7 +149,7 @@ export class AttractionDetail {
     });
     this.route.paramMap.pipe(
       tap(() => {
-        this.loading.set(true); this.error.set(''); this.notFound.set(false); this.packagesError.set('');
+        this.loading.set(true); this.error.set(''); this.notFound.set(false); this.packagesError.set(''); this.packagesRefreshing.set(false);
         this.attraction.set(null); this.packages.set([]); this.selectedPackage.set(null);
         this.availabilityQueries.next(null); this.scheduleForm.controls.time.setValue('');
       }),
@@ -164,7 +169,42 @@ export class AttractionDetail {
       if (response.packages.packages.length === 1) this.choose(response.packages.packages[0]);
       this.observability.trackEvent('VIEW_ATTRACTION', { attractionId: response.attraction.id, attractionName: response.attraction.name });
     });
+    merge(
+      timer(15000, 15000),
+      this.bookingRefreshes,
+      fromEvent(window, 'focus'),
+      fromEvent(document, 'visibilitychange').pipe(filter(() => document.visibilityState === 'visible')),
+    ).pipe(
+      filter(() => document.visibilityState !== 'hidden' && !!this.attraction() && !this.loading()),
+      switchMap(() => {
+        const id = this.attraction()!.id;
+        this.packagesRefreshing.set(true);
+        return this.service.obtenerPaquetes(id).pipe(
+          timeout({ first: 10000 }),
+          map(packages => ({ id, packages, error: '' })),
+          catchError(error => of({ id, packages: null, error: httpErrorMessage(error) })),
+        );
+      }), takeUntilDestroyed(this.destroyRef),
+    ).subscribe(response => {
+      if (response.id !== this.attraction()?.id) return;
+      this.packagesRefreshing.set(false);
+      this.packagesError.set(response.error);
+      if (!response.packages) return;
+      const previous = this.selectedPackage();
+      this.packages.set(response.packages);
+      const selected = response.packages.find(pkg => pkg.id === previous?.id);
+      if (selected) this.choose(selected, false);
+      else if (response.packages.length === 1) this.choose(response.packages[0]);
+      else {
+        this.selectedPackage.set(null);
+        this.participantsForm.clearValidators();
+        this.participantsForm.updateValueAndValidity();
+        this.scheduleForm.controls.time.setValue('');
+        this.availabilityQueries.next(null);
+      }
+    });
   }
+  protected refreshBooking(): void { this.bookingRefreshes.next(); }
   private resizeChildren(count: number): void {
     const ages = this.participantsForm.controls.ninos;
     if (!Number.isInteger(count) || count < 0) { ages.clear(); return; }
@@ -176,17 +216,20 @@ export class AttractionDetail {
   protected provinceOf(item: Atraccion): string { return item.provincia; }
   protected categoryOf(item: Atraccion): string { return item.categoria; }
   protected includesOf(item: Atraccion): string[] { return item.includes; }
-  protected choose(pkg: PaqueteExperiencia): void {
+  protected choose(pkg: PaqueteExperiencia, resetSchedule = true): void {
     if (!this.packages().some(candidate => candidate.id === pkg.id)) return;
     this.selectedPackage.set(pkg);
     this.participantsForm.setValidators(control => {
+      const pkg = this.selectedPackage()!;
+      if (!pkg) return null;
       const count = control.get('num_adultos')!.value + control.get('num_ninos')!.value;
       return count < pkg.min_participantes ? { minimumParticipants: true }
         : pkg.max_participantes !== null && count > pkg.max_participantes ? { maximumParticipants: true } : null;
     });
     this.participantsForm.updateValueAndValidity();
-    this.scheduleForm.controls.time.setValue(''); this.loadAvailability();
-    this.observability.trackEvent('SELECT_PACKAGE', { attractionId: this.attraction()?.id, packageId: pkg.id, productType: pkg.tipo_experiencia });
+    if (resetSchedule) this.scheduleForm.controls.time.setValue('');
+    this.loadAvailability();
+    if (resetSchedule) this.observability.trackEvent('SELECT_PACKAGE', { attractionId: this.attraction()?.id, packageId: pkg.id, productType: pkg.tipo_experiencia });
   }
   protected decrementAdult(): void { this.participantsForm.controls.num_adultos.setValue(Math.max(0, this.adults() - 1)); }
   protected incrementAdult(): void { this.participantsForm.controls.num_adultos.setValue(this.adults() + 1); }

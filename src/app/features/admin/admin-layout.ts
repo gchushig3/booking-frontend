@@ -9,8 +9,8 @@ import { AuthService } from '../../services/auth.service';
   imports: [RouterLink, RouterLinkActive, RouterOutlet],
   template: `
     <main class="mx-auto max-w-7xl px-5 py-8 sm:px-8">
-      <h1 class="text-3xl font-bold tracking-tight">Administración de atracciones</h1>
-      <p class="mt-2 text-sm text-slate-600">Gestión real de atracciones y consulta de reservas. El catálogo de cliente permanece separado.</p>
+      <h1 class="text-3xl font-bold tracking-tight">Panel de administración</h1>
+      <p class="mt-2 text-sm text-slate-600">Administra tu catálogo, prepara las experiencias y consulta las reservas desde un solo lugar.</p>
       <nav aria-label="Administración" class="my-6 flex flex-wrap gap-3">
         <a routerLink="/admin/atracciones" routerLinkActive="bg-teal-100" class="rounded-xl border border-stone-300 px-4 py-2 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700">Atracciones</a>
         <a routerLink="/admin/reservas" routerLinkActive="bg-teal-100" class="rounded-xl border border-stone-300 px-4 py-2 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700">Reservas</a>

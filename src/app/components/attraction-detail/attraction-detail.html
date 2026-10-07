@@ -19,8 +19,9 @@
         </div>
         <aside class="lg:sticky lg:top-24 rounded-3xl border border-stone-200 bg-white p-5 shadow-lg sm:p-6" aria-labelledby="tickets-heading">
           <h2 id="tickets-heading" class="text-2xl font-black">Tickets y Disponibilidad</h2><p class="mt-1 text-sm text-slate-500">Elige la experiencia, fecha y turno.</p>
+          <button type="button" (click)="refreshBooking()" [disabled]="packagesRefreshing()" class="mt-3 rounded-lg border px-3 py-2 text-sm text-teal-800 disabled:opacity-50">{{ packagesRefreshing() ? 'Actualizando...' : 'Actualizar experiencias y cupos' }}</button>
           @if (packagesError()) { <p role="alert" class="mt-4 text-red-700">{{ packagesError() }}</p> }
-          @else if (!packages().length) { <p class="mt-4 text-slate-600">No hay experiencias disponibles para reservar esta atracción.</p> }
+          @else if (!packages().length) { <p class="mt-4 text-slate-600">No hay experiencias disponibles para reservar esta atracción. Todavía no se han configurado opciones reservables. Esta sección se actualiza automáticamente.</p> }
           <div class="mt-5 space-y-3">@for (option of packages(); track option.id) {
             <article [class.border-teal-700]="selectedPackage()?.id === option.id" [class.bg-teal-50]="selectedPackage()?.id === option.id" class="rounded-2xl border border-stone-200 p-4 transition">
               <button type="button" class="w-full text-left" (click)="choose(option)" [attr.aria-pressed]="selectedPackage()?.id === option.id"><span class="flex items-start justify-between gap-3"><span><span class="font-bold">{{ option.nombre_paquete }}</span><span class="mt-1 block text-xs leading-5 text-slate-600">{{ option.descripcion }}</span></span><span class="shrink-0 text-right text-sm font-bold">{{ option.precio_unitario | currency:option.moneda }}<span class="block text-[10px] font-normal text-slate-500">precio unitario</span></span></span><span class="mt-3 block text-sm font-bold text-teal-800 underline">{{ selectedPackage()?.id === option.id ? 'Paquete seleccionado' : 'Seleccionar paquete' }}</span></button>

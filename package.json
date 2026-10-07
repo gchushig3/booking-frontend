@@ -9,6 +9,8 @@
     "test": "ng test",
     "test:integrated": "node e2e/integrated.cjs",
     "test:admin-observability": "node e2e/admin-observability.cjs",
+    "test:admin-creation": "node e2e/admin-creation.cjs",
+    "test:observability-cross-device": "node e2e/observability-cross-device.cjs",
     "test:marketplace-publication": "node e2e/marketplace-publication.cjs",
     "test:marketplace-sale": "node e2e/marketplace-sale.cjs"
   },

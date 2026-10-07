@@ -1,11 +1,11 @@
 <div class="min-h-screen bg-stone-50 text-slate-900">
   <header class="sticky top-0 z-10 border-b border-stone-200 bg-white/95 backdrop-blur">
-    <nav class="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 sm:px-8" aria-label="Navegación principal">
+    <nav class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-5 py-4 sm:px-8" aria-label="Navegación principal">
       <a routerLink="/" class="flex items-center gap-3 font-bold tracking-tight" id="inicio">
         <span class="grid size-10 place-items-center rounded-xl bg-teal-700 text-lg text-white" aria-hidden="true">V</span>
         <span class="text-xl">Vívelo <span class="text-teal-700">Ecuador</span></span>
       </a>
-      <div class="flex items-center gap-3 sm:gap-5">
+      <div class="flex w-full flex-wrap items-center gap-3 sm:w-auto sm:gap-5">
         @if (autenticado()) {
           <div class="flex rounded-xl bg-stone-100 p-1" role="group" aria-label="Secciones">
             <button type="button" (click)="mostrarVista('catalogo')" [class.bg-white]="vistaActual() === 'catalogo'" [class.shadow-sm]="vistaActual() === 'catalogo'" class="rounded-lg px-3 py-2 text-sm font-semibold text-slate-700">Catálogo</button>

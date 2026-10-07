@@ -2,8 +2,7 @@ import { BookingSettings } from './booking-settings';
 import { CurrencyPipe } from '@angular/common';
 import { afterRenderEffect, Component, DestroyRef, ElementRef, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Subscription } from 'rxjs';
-import { Atraccion, PaqueteExperiencia } from '../../contracts/atracciones.contracts';
+import { Atraccion } from '../../contracts/atracciones.contracts';
 import { AtraccionesService } from '../../services/atracciones.service';
 import { ToastService } from '../../services/toast.service';
 import { AdminApiService } from './admin-api.service';
@@ -33,14 +32,9 @@ export class AdminAttractions {
   readonly editing = signal<Atraccion | null>(null);
   readonly pendingDeactivate = signal<Atraccion | null>(null);
   readonly deactivating = signal(false);
-  readonly packagesFor = signal<string | null>(null);
-  readonly packages = signal<PaqueteExperiencia[]>([]);
-  readonly packagesLoading = signal(false);
-  readonly packagesError = signal('');
   readonly feedback = signal('');
   private readonly confirmation = viewChild<ElementRef<HTMLElement>>('confirmation');
   private previousFocus: HTMLElement | null = null;
-  private packagesRequest?: Subscription;
 
   constructor() {
     afterRenderEffect(() => {
@@ -85,13 +79,23 @@ export class AdminAttractions {
     this.load();
   }
 
+  openAvailability(attraction: Atraccion) {
+    this.closeForm();
+    this.availabilityFor.set(attraction);
+    this.feedback.set('');
+  }
+
+  clearSearch() { this.searchText.set(''); this.search(); }
+
   startCreate() {
+    this.availabilityFor.set(null);
     this.editing.set(null);
     this.mode.set('create');
     this.feedback.set('');
   }
 
   startEdit(attraction: Atraccion) {
+    this.availabilityFor.set(null);
     this.editing.set(attraction);
     this.mode.set('edit');
     this.feedback.set('');
@@ -157,28 +161,4 @@ export class AdminAttractions {
     });
   }
 
-  togglePackages(attraction: Atraccion) {
-    this.packagesRequest?.unsubscribe();
-    this.packagesLoading.set(false);
-    if (this.packagesFor() === attraction.id) {
-      this.packagesFor.set(null);
-      this.packages.set([]);
-      this.packagesError.set('');
-      return;
-    }
-    this.packagesFor.set(attraction.id);
-    this.packages.set([]);
-    this.packagesError.set('');
-    this.packagesLoading.set(true);
-    this.packagesRequest = this.api.obtenerPaquetes(attraction.id).pipe(takeUntilDestroyed(this.destroy)).subscribe({
-      next: (packages) => {
-        this.packages.set(packages);
-        this.packagesLoading.set(false);
-      },
-      error: (err) => {
-        this.packagesError.set(this.admin.errorMessage(err));
-        this.packagesLoading.set(false);
-      },
-    });
-  }
 }

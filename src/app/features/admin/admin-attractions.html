@@ -1,114 +1,43 @@
 <section aria-labelledby="admin-attractions-title">
-  <div class="flex flex-wrap items-end justify-between gap-4">
-    <div>
-      <h2 id="admin-attractions-title" class="text-2xl font-bold">Atracciones</h2>
-      <p class="mt-1 text-sm text-slate-600">Gestiona las atracciones del catálogo. El precio base es informativo.</p>
-    </div>
-    @if (mode() === 'list') {
-      <button type="button" (click)="startCreate()" class="rounded-xl bg-teal-700 px-4 py-2 text-sm font-semibold text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700">Crear atracción</button>
-    }
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <div><p class="text-xs font-bold uppercase tracking-widest text-teal-700">Tu catálogo</p><h2 id="admin-attractions-title" class="mt-1 text-2xl font-bold">Atracciones</h2><p class="mt-1 text-sm text-slate-600">Crea la ficha, prepara las experiencias y abre cupos para tus visitantes.</p></div>
+    @if (mode() === 'list' && !availabilityFor()) { <button type="button" (click)="startCreate()" class="rounded-xl bg-teal-700 px-5 py-3 font-semibold text-white shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700">+ Crear atracción</button> }
   </div>
-
-  @for (selected of mode() === 'list' && availabilityFor() ? [availabilityFor()!] : []; track selected.id) {
-    <app-booking-settings [attraction]="selected" />
-    <button type="button" (click)="availabilityFor.set(null)" class="rounded-lg border px-4 py-2">Cerrar disponibilidad</button>
-  }
-
-  @if (feedback()) {
-    <p role="status" class="mt-4 text-sm text-teal-800">{{ feedback() }}</p>
-  }
-
+  @if (feedback()) { <p role="status" class="mt-4 rounded-xl border border-teal-200 bg-teal-50 p-4 text-sm text-teal-900">{{ feedback() }}</p> }
   @if (mode() !== 'list') {
     <app-admin-attraction-form [attraction]="editing()" (saved)="onSaved($event)" (cancelled)="closeForm()" />
+  } @else if (availabilityFor()) {
+    <div class="mt-5 flex flex-wrap items-center justify-between gap-3">
+      <button type="button" (click)="availabilityFor.set(null)" class="rounded-xl border px-4 py-2">← Volver al catálogo</button>
+      <button type="button" (click)="startEdit(availabilityFor()!)" class="rounded-xl border px-4 py-2">Editar ficha de la atracción</button>
+    </div>
+    @for (selected of [availabilityFor()!]; track selected.id) { <app-booking-settings [attraction]="selected" /> }
   } @else {
-    <form (submit)="$event.preventDefault(); search()" class="mt-4 flex flex-wrap items-end gap-3">
-      <label class="flex-1">Buscar atracción por nombre
-        <input type="search" [value]="searchText()" (input)="searchText.set($any($event.target).value)" placeholder="Nombre de la atracción" class="mt-1 block w-full rounded-lg border border-stone-300 p-2">
-      </label>
-      <button type="submit" [disabled]="loading()" class="rounded-lg bg-teal-700 px-4 py-2 text-white">Buscar</button>
+    <div class="mt-6 rounded-2xl border border-teal-100 bg-teal-50 p-5">
+      <h3 class="font-bold text-teal-900">Una atracción lista para reservar en tres pasos</h3>
+      <ol class="mt-3 grid gap-3 text-sm text-teal-900 sm:grid-cols-3"><li><span class="font-bold">1. Crea la ficha</span><p class="mt-1">Nombre, descripción y fotografías.</p></li><li><span class="font-bold">2. Agrega experiencias</span><p class="mt-1">Modalidad, precio y participantes.</p></li><li><span class="font-bold">3. Abre turnos</span><p class="mt-1">Fecha, horario y cupos disponibles.</p></li></ol>
+    </div>
+    <form (submit)="$event.preventDefault(); search()" class="mt-6 flex flex-wrap items-end gap-3 rounded-2xl border border-stone-200 bg-white p-4">
+      <label class="min-w-48 flex-1"><span class="text-sm font-semibold">Buscar atracción por nombre</span><input type="search" [value]="searchText()" (input)="searchText.set($any($event.target).value)" placeholder="Ej. Cotopaxi" class="mt-2 block w-full rounded-xl border border-stone-300 p-3"></label>
+      <button type="submit" [disabled]="loading()" class="rounded-xl bg-teal-700 px-5 py-3 font-semibold text-white disabled:opacity-50">Buscar</button>
+      @if (query()) { <button type="button" (click)="clearSearch()" [disabled]="loading()" class="rounded-xl border px-4 py-3">Limpiar búsqueda</button> }
+      <button type="button" (click)="load()" [disabled]="loading()" class="rounded-xl border px-4 py-3">Actualizar listado</button>
     </form>
-    <button type="button" (click)="load()" [disabled]="loading()" class="my-4 rounded-xl border border-stone-300 px-4 py-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700">Actualizar listado</button>
-    @if (loading()) {
-      <p role="status">Cargando atracciones...</p>
-    } @else if (error()) {
-      <div role="alert" class="text-red-700">
-        {{ error() }}
-        <button type="button" (click)="load()" class="ml-2 rounded-lg border border-stone-300 px-3 py-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700">Reintentar</button>
-      </div>
-    } @else if (!rows().length) {
-      <p>{{ query() ? 'No se encontraron atracciones con ese nombre.' : 'No hay atracciones para administrar.' }}</p>
+    @if (loading()) { <p role="status" class="my-8 text-center text-slate-600">Cargando atracciones...</p> }
+    @else if (error()) { <div role="alert" class="mt-5 rounded-xl bg-red-50 p-4 text-red-800">{{ error() }} <button type="button" (click)="load()" class="ml-2 rounded-lg border px-3 py-2">Reintentar</button></div> }
+    @else if (!rows().length) {
+      <div class="my-6 rounded-2xl border border-dashed border-stone-300 p-10 text-center"><h3 class="text-lg font-bold">{{ query() ? 'No se encontraron atracciones con ese nombre.' : 'No hay atracciones para administrar.' }}</h3><p class="mt-2 text-sm text-slate-600">{{ query() ? 'Prueba con una parte del nombre o limpia la búsqueda.' : 'Agrega tu primera atracción y sigue los pasos para recibir reservas.' }}</p><button type="button" (click)="query() ? clearSearch() : startCreate()" class="mt-5 rounded-xl bg-teal-700 px-5 py-3 font-semibold text-white">{{ query() ? 'Ver todas las atracciones' : 'Crear mi primera atracción' }}</button></div>
     } @else {
-      <div class="mt-4 space-y-3 md:hidden">
+      <div class="mt-5 flex items-center justify-between text-sm text-slate-600"><p>{{ total() }} {{ query() ? 'resultados de búsqueda' : 'atracciones en el catálogo' }}</p><p>Selecciona una atracción para administrarla</p></div>
+      <div class="mt-3 grid gap-4 lg:grid-cols-2">
         @for (item of rows(); track item.id) {
-          <article class="rounded-2xl border border-stone-200 bg-white p-4">
-            <h3 class="font-bold">{{ item.name }}</h3>
-            <p class="text-sm text-slate-600">{{ item.provincia }} · {{ item.region }}</p>
-            <p class="text-sm">{{ item.categoria }} · {{ item.precioBase | currency:(item.price?.currency || 'USD') }}</p>
-            <div class="mt-3 flex flex-wrap gap-2">
-              <button type="button" (click)="startEdit(item)" class="rounded-lg border px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700">Editar</button>
-              <button type="button" (click)="availabilityFor.set(item)" class="rounded-lg border px-3 py-2 text-sm">Experiencias y disponibilidad</button>
-              <button type="button" (click)="togglePackages(item)" class="rounded-lg border px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700">{{ packagesFor() === item.id ? 'Ocultar paquetes' : 'Ver paquetes' }}</button>
-              <button type="button" (click)="askDeactivate(item)" class="rounded-lg border border-red-200 px-3 py-2 text-sm text-red-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700">Desactivar atracción</button>
-            </div>
+          <article class="flex flex-col rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
+            <div class="flex gap-4"><div class="min-w-0 flex-1"><h3 class="text-lg font-bold text-slate-900">{{ item.name }}</h3><p class="mt-1 text-sm text-slate-500">{{ item.provincia || 'Ubicación por completar' }} {{ item.region ? '· ' + item.region : '' }}</p><p class="mt-3 text-sm text-slate-600">{{ item.categories.join(' · ') || item.categoria }} · {{ item.price.total | currency:(item.price.currency || 'USD') }} de referencia</p></div></div>
+            <div class="mt-4 flex flex-wrap gap-2 border-t border-stone-100 pt-4"><button type="button" (click)="startEdit(item)" class="rounded-xl border border-stone-300 px-4 py-2 text-sm font-semibold">Editar ficha</button><button type="button" (click)="openAvailability(item)" class="rounded-xl bg-teal-700 px-4 py-2 text-sm font-semibold text-white">Experiencias y disponibilidad</button><button type="button" (click)="askDeactivate(item)" class="ml-auto rounded-xl px-3 py-2 text-sm text-red-700">Desactivar atracción</button></div>
           </article>
         }
       </div>
-      <div class="mt-4 hidden overflow-x-auto md:block">
-        <table class="w-full min-w-[40rem] text-left text-sm">
-          <caption class="sr-only">Atracciones del backend</caption>
-          <thead>
-            <tr>
-              <th scope="col" class="p-3">Nombre</th>
-              <th scope="col" class="p-3">Provincia / región</th>
-              <th scope="col" class="p-3">Categoría</th>
-              <th scope="col" class="p-3">Precio base</th>
-              <th scope="col" class="p-3">Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (item of rows(); track item.id) {
-              <tr class="border-t">
-                <td class="p-3 font-semibold">{{ item.name }}</td>
-                <td class="p-3">{{ item.provincia }} / {{ item.region }}</td>
-                <td class="p-3">{{ item.categoria }}</td>
-                <td class="p-3">{{ item.precioBase | currency:(item.price?.currency || 'USD') }}</td>
-                <td class="p-3">
-                  <div class="flex flex-wrap gap-2">
-                    <button type="button" (click)="startEdit(item)" class="rounded-lg border px-3 py-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700">Editar</button>
-                    <button type="button" (click)="availabilityFor.set(item)" class="rounded-lg border px-3 py-2 text-sm">Experiencias y disponibilidad</button>
-              <button type="button" (click)="togglePackages(item)" class="rounded-lg border px-3 py-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700">{{ packagesFor() === item.id ? 'Ocultar paquetes' : 'Ver paquetes' }}</button>
-                    <button type="button" (click)="askDeactivate(item)" class="rounded-lg border border-red-200 px-3 py-2 text-red-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700">Desactivar atracción</button>
-                  </div>
-                </td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-      @if (packagesFor()) {
-        <section class="mt-4 rounded-2xl border border-stone-200 bg-stone-50 p-4" aria-label="Paquetes de la atracción">
-          <h3 class="font-bold">Paquetes (solo lectura)</h3>
-          <p class="mt-1 text-sm text-slate-600">Consulta las modalidades, precios y límites de los paquetes reservables.</p>
-          @if (packagesLoading()) { <p role="status">Cargando paquetes...</p> }
-          @else if (packagesError()) { <p role="alert" class="text-red-700">{{ packagesError() }}</p> }
-          @else if (!packages().length) { <p>Esta atracción no tiene paquetes reservables.</p> }
-          @else {
-            <ul class="mt-3 space-y-2">
-              @for (item of packages(); track item.id) {
-                <li class="rounded-xl border border-stone-200 bg-white p-3">
-                  <p class="font-semibold">{{ item.nombre_paquete }}</p>
-                  <p class="text-sm">{{ item.tipo_experiencia }} · {{ item.precio_unitario }} {{ item.moneda }} · {{ item.min_participantes }}–{{ item.max_participantes ?? '∞' }} participantes</p>
-                </li>
-              }
-            </ul>
-          }
-        </section>
-      }
-      <nav class="mt-4 flex flex-wrap items-center gap-3" aria-label="Paginación de atracciones">
-        <button type="button" (click)="goTo(page() - 1)" [disabled]="page() <= 1 || loading()" class="rounded-lg border px-3 py-2 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700">Anterior</button>
-        <p>Página {{ page() }} de {{ lastPage() }} ({{ total() }})</p>
-        <button type="button" (click)="goTo(page() + 1)" [disabled]="page() >= lastPage() || loading()" class="rounded-lg border px-3 py-2 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700">Siguiente</button>
-      </nav>
+      <nav class="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-stone-50 p-4" aria-label="Paginación de atracciones"><button type="button" (click)="goTo(page() - 1)" [disabled]="page() <= 1 || loading()" class="rounded-lg border bg-white px-4 py-2 disabled:opacity-50">Anterior</button><p class="text-sm">Página {{ page() }} de {{ lastPage() }} ({{ total() }})</p><button type="button" (click)="goTo(page() + 1)" [disabled]="page() >= lastPage() || loading()" class="rounded-lg border bg-white px-4 py-2 disabled:opacity-50">Siguiente</button></nav>
     }
   }
 </section>

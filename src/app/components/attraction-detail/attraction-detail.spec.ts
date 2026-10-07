@@ -8,6 +8,7 @@ import { API_URL } from '../../core/api.config';
 import { BookingNavigationService, BookingSelection } from '../../services/booking-navigation.service';
 import { attraction, experience } from '../../testing/booking.fixtures';
 import { PaqueteExperiencia } from '../../contracts/atracciones.contracts';
+import { ObservabilityService } from '../../services/observability.service';
 
 describe('Attraction booking detail', () => {
   let fixture: ComponentFixture<AttractionDetail>;
@@ -16,12 +17,13 @@ describe('Attraction booking detail', () => {
   let params: BehaviorSubject<ReturnType<typeof convertToParamMap>>;
   const base = '/api/v1/atracciones/' + attraction.id;
   beforeEach(() => {
+    vi.useFakeTimers();
     localStorage.clear(); params = new BehaviorSubject(convertToParamMap({ id: attraction.id }));
-    TestBed.configureTestingModule({ imports: [AttractionDetail], providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(), { provide: API_URL, useValue: '/api/v1' }, { provide: ActivatedRoute, useValue: { paramMap: params.asObservable(), snapshot: { paramMap: params.value } } }] });
+    TestBed.configureTestingModule({ imports: [AttractionDetail], providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(), { provide: ObservabilityService, useValue: { trackEvent: vi.fn() } }, { provide: API_URL, useValue: '/api/v1' }, { provide: ActivatedRoute, useValue: { paramMap: params.asObservable(), snapshot: { paramMap: params.value } } }] });
     fixture = TestBed.createComponent(AttractionDetail); component = fixture.componentInstance;
     http = TestBed.inject(HttpTestingController); fixture.detectChanges();
   });
-  afterEach(() => { fixture.destroy(); http.verify(); localStorage.clear(); });
+  afterEach(() => { fixture.destroy(); http.verify(); localStorage.clear(); vi.useRealTimers(); });
   function load(packages: PaqueteExperiencia[] = [experience]) {
     http.expectOne(base).flush(attraction);
     http.expectOne(base + '/paquetes').flush(packages);
@@ -108,6 +110,40 @@ describe('Attraction booking detail', () => {
     expect(fixture.nativeElement.querySelector('select')).toBe(select);
     expect(select.value).toBe('15:45');
     expect(component['canAdvance']()).toBe(true);
+  });
+  it('automatically discovers an experience created after the client opened an empty attraction', () => {
+    load([]);
+    vi.advanceTimersByTime(15000);
+    http.expectOne(base + '/paquetes').flush([experience]);
+    http.expectOne(req => req.url === base + '/availability').flush({ date: component['date'](), times: ['11:15'], available_spots: 10 });
+    http.expectOne(req => req.url === base + '/availability' && req.params.get('time') === '11:15').flush({ date: component['date'](), times: ['11:15'], available_spots: 10 });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).not.toContain('No hay experiencias disponibles');
+    expect(component['availability']()?.available_spots).toBe(10);
+  });
+  it('refreshes changed cupos and prices without losing the client selections', () => {
+    load(); available(); participants();
+    component['refreshBooking']();
+    http.expectOne(base + '/paquetes').flush([{ ...experience, precio_unitario: 45 }]);
+    const req = http.expectOne(req => req.url === base + '/availability');
+    expect(req.request.params.get('date')).toBe('2099-10-10');
+    expect(req.request.params.get('time')).toBe('11:15');
+    req.flush({ date: '2099-10-10', times: ['11:15'], available_spots: 15 });
+    expect(component['selectedPackage']()?.precio_unitario).toBe(45);
+    expect(component['adults']()).toBe(2);
+    expect(component['participantsForm'].controls.ninos.getRawValue()).toEqual([6]);
+    expect(component['selectedTime']()).toBe('11:15');
+    expect(component['availability']()?.available_spots).toBe(15);
+  });
+  it('ignores refresh responses belonging to a previously opened attraction', () => {
+    load([]); component['refreshBooking']();
+    const previous = http.expectOne(base + '/paquetes');
+    params.next(convertToParamMap({ id: 'next-attraction' }));
+    previous.flush([experience]);
+    expect(component['selectedPackage']()).toBeNull();
+    http.expectOne('/api/v1/atracciones/next-attraction').flush({ ...attraction, id: 'next-attraction' });
+    http.expectOne('/api/v1/atracciones/next-attraction/paquetes').flush([]);
+    http.expectNone(req => req.url.endsWith('/availability'));
   });
   it('represents two adults and one child with an individual age', () => {
     load(); available(); participants();
@@ -238,7 +274,7 @@ describe('Attraction booking detail', () => {
   });
   it('disables the rendered next button until valid and preserves all chosen fields on navigation', () => {
     load();
-    const button = () => fixture.nativeElement.querySelector('aside > button') as HTMLButtonElement;
+    const button = () => [...fixture.nativeElement.querySelectorAll('aside > button')].find((button: HTMLButtonElement) => button.textContent?.includes('Siguiente:')) as HTMLButtonElement;
     expect(button().disabled).toBe(true);
     available(); participants(2, [8]); expect(button().disabled).toBe(false);
     let request: any; TestBed.inject(BookingNavigationService).bookingRequested$.subscribe(value => request = value);

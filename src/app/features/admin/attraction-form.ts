@@ -66,6 +66,9 @@ export class AttractionForm {
   private readonly api = inject(AtraccionesService);
   private readonly admin = inject(AdminApiService);
   private readonly destroy = inject(DestroyRef);
+  readonly step = signal(0);
+  readonly steps = ['Información básica', 'Fotos y detalles', 'Revisar y guardar'];
+  readonly typeLabels: Record<ProductType, string> = { SINGLE_TICKET: 'Entrada individual', GUIDED_TOUR: 'Tour guiado', PACKAGE: 'Paquete de actividades' };
   readonly sending = signal(false);
   readonly error = signal('');
   readonly productTypes: ProductType[] = ['SINGLE_TICKET', 'GUIDED_TOUR', 'PACKAGE'];
@@ -93,19 +96,20 @@ export class AttractionForm {
     effect(() => {
       const attraction = this.attraction();
       this.error.set('');
+      this.step.set(0);
       this.form.controls.locations.clear();
       this.form.reset({
         name: attraction?.name ?? '',
         long_description: attraction?.long_description ?? '',
-        duration: attraction?.duration ?? '',
+        duration: attraction?.duration ?? 'PT2H',
         product_type: attraction?.product_type ?? 'SINGLE_TICKET',
         includes: attraction?.includes.join('\n') ?? '',
         categories: attraction?.categories.join('\n') ?? '',
-        supported_languages: attraction?.supported_languages.join('\n') ?? '',
+        supported_languages: attraction?.supported_languages.join('\n') ?? 'es',
         photos: (attraction?.photos as { url?: string }[] | undefined)?.map((photo) => photo.url).filter(Boolean).join('\n') ?? '',
         free_cancellation: attraction?.free_cancellation ?? true,
         priceEnabled: !!attraction?.price,
-        currency: attraction?.price?.currency ?? '',
+        currency: attraction?.price?.currency ?? 'USD',
         total: attraction?.price?.total ?? null,
       });
       for (const location of (attraction?.locations ?? []).map(asLocation).filter((item): item is Location => !!item)) {
@@ -115,6 +119,35 @@ export class AttractionForm {
       this.form.markAsPristine();
     });
   }
+
+  nextStep() {
+    if (this.sending()) return;
+    const keys = this.step() === 0 ? ['name', 'long_description', 'duration', 'product_type'] as const : ['photos', 'locations'] as const;
+    for (const key of keys) this.form.controls[key].markAsTouched();
+    if (keys.some(key => this.form.controls[key].invalid) || (this.step() === 0 && (this.form.controls.name.value.trim().length < 3 || this.form.controls.long_description.value.trim().length < 10))) {
+      this.error.set(this.step() === 0 ? 'Completa el nombre, la descripción y la duración antes de continuar.' : 'Revisa las fotografías y los datos de las ubicaciones.');
+      return;
+    }
+    this.error.set('');
+    this.step.update(value => Math.min(2, value + 1));
+  }
+
+  previousStep() {
+    if (!this.sending()) { this.step.update(value => Math.max(0, value - 1)); this.error.set(''); }
+  }
+
+  durationHours(): string {
+    const match = /^PT(?:(\d+)H)?(?:(\d+)M)?$/.exec(this.form.controls.duration.value);
+    return match ? String(Number(match[1] ?? 0) + Number(match[2] ?? 0) / 60) : '';
+  }
+
+  setDuration(value: string) {
+    const hours = Number(value);
+    this.form.controls.duration.setValue(value && Number.isInteger(hours) && hours > 0 ? `PT${hours}H` : '');
+    this.form.controls.duration.markAsDirty();
+  }
+
+  previewPhotos(): string[] { return lines(this.form.controls.photos.value); }
 
   addLocation() {
     if (!this.sending()) this.form.controls.locations.push(locationGroup());
@@ -170,18 +203,21 @@ export class AttractionForm {
     const unchangedPrice = !!this.attraction() && !!this.original?.price
       && value.currency.trim() === this.original.price.currency
       && asNumber(value.total) === this.original.price.total;
-    if (this.form.invalid || (value.priceEnabled && (!value.currency.trim() || (!unchangedPrice && positive(this.form.controls.total))))) {
+    if (this.form.invalid || value.name.trim().length < 3 || value.long_description.trim().length < 10 || (value.priceEnabled && (!value.currency.trim() || (!unchangedPrice && positive(this.form.controls.total))))) {
+      if (this.form.controls.name.invalid || this.form.controls.long_description.invalid || this.form.controls.duration.invalid || value.name.trim().length < 3 || value.long_description.trim().length < 10) this.step.set(0);
+      else if (this.form.controls.photos.invalid || this.form.controls.locations.invalid) this.step.set(1);
+      else this.step.set(2);
       this.error.set('Revisa los campos: nombre mínimo 3, descripción mínimo 10; precio positivo y ubicaciones válidas.');
       return;
     }
     const existing = this.attraction();
     if (existing && this.original?.price && !value.priceEnabled) {
-      this.error.set('El contrato PATCH no permite borrar el precio base. Mantén el precio o modifica su valor.');
+      this.error.set('La edición no permite borrar el precio existente. Mantén el precio o modifica su valor.');
       return;
     }
     const patch = existing ? this.patchPayload() : this.payload();
     if (existing && !Object.keys(patch).length) {
-      this.error.set('No hay cambios para guardar. El precio opcional no puede borrarse mediante este DTO.');
+      this.error.set('No hay cambios para guardar.');
       return;
     }
     this.error.set('');

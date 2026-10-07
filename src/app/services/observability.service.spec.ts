@@ -111,6 +111,50 @@ describe('Real browser telemetry', () => {
     start(); for (let index = 0; index < 17; index++) service.track('auth', 'login_success');
     const req = http.expectOne('/api/v1/observabilidad/eventos'); expect(req.request.body.events).toHaveLength(20); req.flush({ accepted: 20 });
   });
+  it('retries an upload that times out instead of blocking all later mobile events', () => {
+    start(); service.track('auth', 'login_success');
+    vi.advanceTimersByTime(5000);
+    const stuck = http.expectOne('/api/v1/observabilidad/eventos');
+    vi.advanceTimersByTime(10000);
+    expect(stuck.cancelled).toBe(true);
+    vi.advanceTimersByTime(5000);
+    const retry = http.expectOne('/api/v1/observabilidad/eventos');
+    expect(retry.request.body.events.some((event: { payload: { action?: string } }) => event.payload.action === 'login_success')).toBe(true);
+    retry.flush({ accepted: retry.request.body.events.length });
+  });
+  it('keeps queued actions through more than three transient failures', () => {
+    start(); service.track('booking', 'booking_success');
+    for (let attempt = 0; attempt < 4; attempt++) {
+      vi.advanceTimersByTime(5000);
+      http.expectOne('/api/v1/observabilidad/eventos').flush({}, { status: 500, statusText: 'Offline' });
+    }
+    vi.advanceTimersByTime(5000);
+    const recovered = http.expectOne('/api/v1/observabilidad/eventos');
+    expect(recovered.request.body.events.some((event: { payload: { action?: string } }) => event.payload.action === 'booking_success')).toBe(true);
+    recovered.flush({ accepted: recovered.request.body.events.length });
+  });
+  it('keeps checkout step and result without collecting private form data', () => {
+    start(); service.trackEvent('CHECKOUT_STEP', { step: 'CUSTOMER_DATA', result: 'invalid', email: 'private@example.test', cvv: '123' });
+    expect(last('application_event').payload).toEqual({ action: 'CHECKOUT_STEP', step: 'CUSTOMER_DATA', result: 'invalid' });
+  });
+  it('sends queued mobile actions on backgrounding even when another batch is in flight', () => {
+    const originalBeacon = Object.getOwnPropertyDescriptor(navigator, 'sendBeacon');
+    const beacon = vi.fn().mockReturnValue(true);
+    Object.defineProperty(navigator, 'sendBeacon', { configurable: true, value: beacon });
+    try {
+      start(); vi.advanceTimersByTime(5000);
+      const inFlight = http.expectOne('/api/v1/observabilidad/eventos');
+      service.track('auth', 'logout');
+      vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
+      document.dispatchEvent(new Event('visibilitychange'));
+      expect(beacon).toHaveBeenCalledOnce();
+      expect(beacon.mock.calls[0][0]).toBe('/api/v1/observabilidad/eventos');
+      inFlight.flush({ accepted: inFlight.request.body.events.length });
+    } finally {
+      if (originalBeacon) Object.defineProperty(navigator, 'sendBeacon', originalBeacon);
+      else delete (navigator as unknown as Record<string, unknown>)['sendBeacon'];
+    }
+  });
   it('strips credentials, query and fragment from URLs', () => {
     expect(safeTelemetryUrl('https://user:password@example.test/path?token=secret#private')).toBe('https://example.test/path');
     expect(safeTelemetryUrl('/activities?password=secret#private')).toBe('/activities');

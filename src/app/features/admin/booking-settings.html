@@ -1,38 +1,35 @@
-<section class="my-6 rounded-2xl border border-stone-200 bg-white p-6" aria-label="Experiencias y disponibilidad">
-  <h3 class="text-xl font-bold">Experiencias y disponibilidad de {{ attraction().name }}</h3>
-  <p class="mt-2 text-sm text-slate-600">Para reservar se necesita una experiencia y cupos en un turno. Las nuevas atracciones solo tienen disponibilidad en las fechas y horarios que configures.</p>
-  @if (error()) { <p role="alert" class="mt-3 text-red-700">{{ error() }}</p> }
-  @if (message()) { <p role="status" class="mt-3 text-teal-800">{{ message() }}</p> }
-  <ul class="my-4 space-y-2">
-    @for (pkg of packages(); track pkg.id) {
-      <li class="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3">
-        <span>{{ pkg.nombre_paquete }} · {{ pkg.precio_unitario }} USD ? {{ pkg.min_participantes }}–{{ pkg.max_participantes ?? 'sin límite' }} participantes</span>
-        <button type="button" (click)="edit(pkg)" [disabled]="busy()" class="rounded-lg border px-3 py-2">Editar experiencia</button>
-      </li>
-    } @empty { <li>Esta atracción todavía no tiene experiencias reservables.</li> }
-  </ul>
-  <form [formGroup]="experience" (ngSubmit)="saveExperience()" class="space-y-3">
-    <h4 class="font-bold">{{ packageId() ? 'Editar experiencia' : 'Crear experiencia' }}</h4>
-    <fieldset [disabled]="busy()" class="grid gap-3 sm:grid-cols-2">
-      <label>Nombre<input formControlName="nombre_paquete" class="mt-1 block w-full rounded-lg border p-2"></label>
-      <label>Modalidad<select formControlName="tipo_experiencia" class="mt-1 block w-full rounded-lg border p-2">@for (type of types; track type) { <option [value]="type">{{ type }}</option> }</select></label>
-      <label>Precio por participante (USD)<input type="number" min="0" step="0.01" formControlName="precio_unitario" class="mt-1 block w-full rounded-lg border p-2"></label>
-      <label>Mínimo de participantes<input type="number" min="1" step="1" formControlName="min_participantes" class="mt-1 block w-full rounded-lg border p-2"></label>
-      <label>Máximo de participantes (vacío: sin límite)<input type="number" min="1" step="1" formControlName="max_participantes" class="mt-1 block w-full rounded-lg border p-2"></label>
-    </fieldset>
-    <button type="submit" [disabled]="busy()" class="rounded-lg bg-teal-700 px-4 py-2 text-white">Guardar experiencia</button>
-    @if (packageId()) { <button type="button" (click)="edit()" [disabled]="busy()" class="ml-2 rounded-lg border px-4 py-2">Nueva experiencia</button> }
-  </form>
-  <form [formGroup]="slot" (ngSubmit)="saveSlot()" class="mt-6 space-y-3 border-t pt-4">
-    <h4 class="font-bold">Disponibilidad por fecha y horario</h4>
-    <p class="text-sm text-slate-600">La capacidad total incluye los cupos reservados. Usa cero para cerrar un turno sin reservas. Los cupos del turno se comparten entre las experiencias.</p>
-    <fieldset [disabled]="busy()" class="grid gap-3 sm:grid-cols-3">
-      <label>Fecha<input type="date" formControlName="date" class="mt-1 block w-full rounded-lg border p-2"></label>
-      <label>Hora<input type="time" formControlName="time" class="mt-1 block w-full rounded-lg border p-2"></label>
-      <label>Capacidad total<input type="number" min="0" step="1" formControlName="capacidad_total" class="mt-1 block w-full rounded-lg border p-2"></label>
-    </fieldset>
-    <button type="submit" [disabled]="busy()" class="rounded-lg bg-teal-700 px-4 py-2 text-white">Guardar turno</button>
-    <button type="button" (click)="checkSlot()" [disabled]="busy()" class="ml-2 rounded-lg border px-4 py-2">Consultar cupos</button>
-    @if (availability()) { <p role="status">{{ availability() }}</p> }
-  </form>
+<section class="my-6 overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm" aria-label="Experiencias y disponibilidad">
+  <header class="border-b border-stone-200 bg-stone-50 p-6">
+    <p class="text-xs font-bold uppercase tracking-widest text-teal-700">Prepara las reservas</p><h3 class="mt-2 text-2xl font-bold">{{ attraction().name }}</h3><p class="mt-2 text-sm text-slate-600">La ficha ya está guardada. Agrega lo que el visitante podrá reservar y configura los cupos de cada turno.</p>
+    <div class="mt-4 flex flex-wrap gap-2 text-sm"><span class="rounded-full bg-teal-100 px-3 py-1 text-teal-900">✓ Ficha guardada</span><span class="rounded-full bg-white px-3 py-1 text-slate-700">{{ packagesLoading() ? 'Consultando experiencias...' : packages().length + ' experiencias' }}</span>@if (checkedSpots() !== null) { <span class="rounded-full bg-white px-3 py-1 text-slate-700">{{ checkedSpots() }} cupos en el turno consultado</span> }</div>
+  </header>
+  <div class="p-6">
+    <nav aria-label="Configuración de reservas" class="mb-5 grid gap-3 sm:grid-cols-2"><button type="button" (click)="tab.set('experiences')" [disabled]="busy()" [attr.aria-current]="tab() === 'experiences' ? 'page' : null" [class.bg-teal-50]="tab() === 'experiences'" [class.border-teal-700]="tab() === 'experiences'" class="rounded-xl border p-4 text-left"><span class="block font-bold">1. Experiencias y precios</span><span class="text-sm text-slate-600">Define qué se reserva y cuánto cuesta.</span></button><button type="button" (click)="tab.set('slots')" [disabled]="busy()" [attr.aria-current]="tab() === 'slots' ? 'page' : null" [class.bg-teal-50]="tab() === 'slots'" [class.border-teal-700]="tab() === 'slots'" class="rounded-xl border p-4 text-left"><span class="block font-bold">2. Fechas y cupos</span><span class="text-sm text-slate-600">Abre un horario para recibir visitantes.</span></button></nav>
+    @if (error()) { <div role="alert" class="mb-4 rounded-xl bg-red-50 p-4 text-red-800">{{ error() }} @if (!busy()) { <button type="button" (click)="error.set(''); loadPackages()" class="ml-2 underline">Actualizar experiencias</button> }</div> }
+    @if (message()) { <p role="status" class="mb-4 rounded-xl bg-teal-50 p-4 text-teal-900">{{ message() }}</p> }
+    @if (tab() === 'experiences') {
+      <div class="grid gap-6 lg:grid-cols-2">
+        <div><h4 class="text-lg font-bold">Experiencias de esta atracción</h4><p class="mt-1 text-sm text-slate-600">Cada experiencia tiene su propio precio y límites de participantes.</p>
+          @if (packagesLoading()) { <p role="status" class="mt-4">Cargando experiencias...</p> } @else {
+            <ul class="mt-4 space-y-3">@for (pkg of packages(); track pkg.id) { <li class="rounded-xl border border-stone-200 p-4"><div class="flex items-start justify-between gap-3"><p class="font-bold">{{ pkg.nombre_paquete }}</p><button type="button" (click)="edit(pkg)" [disabled]="busy()" class="rounded-lg border px-3 py-2 text-sm">Editar experiencia</button></div><p class="mt-2 text-sm text-slate-600">{{ typeLabels[pkg.tipo_experiencia] }}</p><p class="mt-1 font-semibold text-teal-800">{{ pkg.precio_unitario }} USD por participante</p><p class="mt-1 text-sm text-slate-500">Desde {{ pkg.min_participantes }} hasta {{ pkg.max_participantes ?? 'sin límite de' }} participantes</p></li> } @empty { <li class="rounded-xl border border-dashed border-stone-300 bg-stone-50 p-6"><p class="font-semibold">Agrega tu primera experiencia</p><p class="mt-2 text-sm text-slate-600">Por ejemplo: entrada general, recorrido con guía o actividad en grupo. Completa el formulario para empezar.</p></li> }</ul>
+          }
+          @if (packages().length) { <button type="button" (click)="tab.set('slots')" [disabled]="busy()" class="mt-4 rounded-xl border border-teal-700 px-4 py-3 font-semibold text-teal-800">Continuar con fechas y cupos →</button> }
+        </div>
+        <form [formGroup]="experience" (ngSubmit)="saveExperience()" class="rounded-2xl bg-stone-50 p-5">
+          <h4 class="text-lg font-bold">{{ packageId() ? 'Editar experiencia' : 'Nueva experiencia' }}</h4><fieldset [disabled]="busy()" class="mt-4 grid gap-4 sm:grid-cols-2">
+            <label class="sm:col-span-2"><span class="mb-1 block text-sm font-semibold">Nombre de la experiencia *</span><input formControlName="nombre_paquete" placeholder="Ej. Recorrido con guía local" class="w-full rounded-xl border border-stone-300 bg-white p-3"></label>
+            <label class="sm:col-span-2"><span class="mb-1 block text-sm font-semibold">Tipo de experiencia</span><select formControlName="tipo_experiencia" class="w-full rounded-xl border border-stone-300 bg-white p-3">@for (type of types; track type) { <option [value]="type">{{ typeLabels[type] }}</option> }</select></label>
+            <label class="sm:col-span-2"><span class="mb-1 block text-sm font-semibold">Precio por participante (USD) *</span><input type="number" min="0" step="0.01" formControlName="precio_unitario" class="w-full rounded-xl border border-stone-300 bg-white p-3"><span class="text-xs text-slate-500">Este es el precio utilizado al reservar. Cero permite una experiencia gratuita.</span></label>
+            <label><span class="mb-1 block text-sm font-semibold">Mínimo de participantes</span><input type="number" min="1" step="1" formControlName="min_participantes" class="w-full rounded-xl border border-stone-300 bg-white p-3"></label>
+            <label><span class="mb-1 block text-sm font-semibold">Máximo de participantes</span><input type="number" min="1" step="1" placeholder="Sin límite" formControlName="max_participantes" class="w-full rounded-xl border border-stone-300 bg-white p-3"><span class="text-xs text-slate-500">Deja vacío para no establecer un máximo.</span></label>
+          </fieldset><div class="mt-5 flex flex-wrap gap-3"><button type="submit" [disabled]="busy() || packagesLoading()" class="rounded-xl bg-teal-700 px-5 py-3 font-semibold text-white disabled:opacity-50">{{ busy() ? 'Guardando...' : 'Guardar experiencia' }}</button>@if (packageId()) { <button type="button" (click)="edit()" [disabled]="busy()" class="rounded-xl border px-4 py-3">Cancelar edición</button> }</div>
+        </form>
+      </div>
+    } @else {
+      <div class="grid gap-6 lg:grid-cols-2">
+        <form [formGroup]="slot" (ngSubmit)="saveSlot()" class="rounded-2xl bg-stone-50 p-5"><h4 class="text-lg font-bold">Configurar un turno</h4><p class="mt-2 text-sm text-slate-600">Elige una fecha, la hora de inicio y la capacidad total. Puedes volver a guardar el mismo turno para cambiar su capacidad.</p><fieldset [disabled]="busy()" class="mt-5 grid gap-4 sm:grid-cols-2"><label><span class="mb-1 block text-sm font-semibold">Fecha *</span><input type="date" formControlName="date" class="w-full rounded-xl border border-stone-300 bg-white p-3"></label><label><span class="mb-1 block text-sm font-semibold">Hora de inicio *</span><input type="time" formControlName="time" class="w-full rounded-xl border border-stone-300 bg-white p-3"></label><label class="sm:col-span-2"><span class="mb-1 block text-sm font-semibold">Capacidad total del turno *</span><input type="number" min="0" step="1" formControlName="capacidad_total" class="w-full rounded-xl border border-stone-300 bg-white p-3"><span class="text-xs text-slate-500">Incluye a los visitantes que ya reservaron. Usa cero para cerrar un turno sin reservas.</span></label></fieldset><div class="mt-5 flex flex-wrap gap-3"><button type="submit" [disabled]="busy()" class="rounded-xl bg-teal-700 px-5 py-3 font-semibold text-white disabled:opacity-50">{{ busy() ? 'Procesando...' : 'Guardar turno' }}</button><button type="button" (click)="checkSlot()" [disabled]="busy() || !slot.controls.date.value || !slot.controls.time.value" class="rounded-xl border px-4 py-3 disabled:opacity-50">Consultar cupos</button></div></form>
+        <aside class="rounded-2xl border border-stone-200 p-5"><h4 class="text-lg font-bold">Comprueba la disponibilidad</h4><p class="mt-2 text-sm text-slate-600">Guarda el turno o consulta una fecha y una hora para conocer los cupos disponibles.</p>@if (availability()) { <p role="status" class="mt-4 rounded-xl bg-teal-50 p-4 font-semibold text-teal-900">{{ availability() }}</p> }<ul class="mt-5 space-y-3 text-sm text-slate-600"><li>Los cupos del turno se comparten entre las experiencias de esta atracción.</li><li>La capacidad no puede ser menor que los cupos ya reservados.</li><li>Una experiencia y un turno con cupos permiten recibir reservas.</li></ul>@if (!packagesLoading() && !packages().length) { <div class="mt-5 rounded-xl bg-amber-100 p-4 text-sm text-amber-800">Todavía falta una experiencia para que los visitantes puedan reservar.<button type="button" (click)="tab.set('experiences')" class="mt-2 block font-semibold underline">Agregar experiencia</button></div> }</aside>
+      </div>
+    }
+  </div>
 </section>

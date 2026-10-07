@@ -41,6 +41,45 @@ describe('Persisted ADMIN observability dashboard', () => {
     const fixture = create(); expect(fixture.componentInstance.state()).toBe('desconectado');
     expect(auth.getToken()).toBe('test-token'); http.expectNone(endpoint);
   });
+  it('falls back when an open stream never delivers its first snapshot', () => {
+    vi.mocked(TestBed.inject(ObservabilityApiService).stream).mockReturnValue(stream);
+    const fixture = TestBed.createComponent(AdminObservability);
+    fixture.detectChanges();
+    vi.advanceTimersByTime(32001);
+    http.expectOne(endpoint).flush(data('Recovered from silent stream'));
+    expect(fixture.componentInstance.transport()).toBe('polling');
+    expect(fixture.componentInstance.state()).toBe('conectado');
+    expect(stream.observed).toBe(false);
+  });
+  it('renews a normally completed stream without treating it as a connection failure', () => {
+    const renewed = new Subject<TelemetrySnapshot>();
+    vi.mocked(TestBed.inject(ObservabilityApiService).stream).mockReturnValueOnce(stream).mockReturnValue(renewed);
+    const fixture = TestBed.createComponent(AdminObservability);
+    fixture.detectChanges();
+    stream.next(data());
+    stream.complete();
+    vi.advanceTimersByTime(1000);
+    renewed.next(data('Renewed stream'));
+    expect(fixture.componentInstance.transport()).toBe('SSE');
+    expect(fixture.componentInstance.events()[0].id).toBe('Renewed stream');
+    http.expectNone(endpoint);
+  });
+  it('detects a stalled stream after a snapshot and limits retries even after successful snapshots', () => {
+    vi.mocked(TestBed.inject(ObservabilityApiService).stream).mockReturnValue(stream);
+    const fixture = TestBed.createComponent(AdminObservability);
+    fixture.detectChanges();
+    for (let attempt = 0; attempt < 3; attempt++) {
+      stream.next(data());
+      vi.advanceTimersByTime(25000);
+      if (attempt < 2) vi.advanceTimersByTime(1000);
+    }
+    vi.advanceTimersByTime(1);
+    http.expectOne(endpoint).flush(data('Recovered live data'));
+    expect(fixture.componentInstance.transport()).toBe('polling');
+    fixture.destroy();
+    vi.advanceTimersByTime(6000);
+    http.expectNone(endpoint);
+  });
   it('renders events returned by the ADMIN API, without using local telemetry as the source', () => {
     const fixture = create(); http.expectOne(endpoint).flush(data()); fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Actual browser error');
@@ -53,6 +92,35 @@ describe('Persisted ADMIN observability dashboard', () => {
     vi.advanceTimersByTime(3000); http.expectOne(endpoint).flush(data('New real event')); fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('New real event');
     fixture.destroy(); vi.advanceTimersByTime(10000); http.expectNone(endpoint);
+  });
+  it('automatically shows all clients and devices including administration activity', () => {
+    const fixture = create();
+    const snapshot = data('Mobile client action');
+    snapshot.events.push({ ...snapshot.events[0], id: 'admin-event', sessionId: 'desktop-admin', route: '/admin/observabilidad' });
+    snapshot.events.push({ ...snapshot.events[0], id: 'other-client', sessionId: 'other-client' });
+    for (const [sessionId, width] of [['test-session', 390], ['desktop-admin', 1365]] as const) {
+      snapshot.events.push({ ...snapshot.events[0], id: sessionId + '-viewport', sessionId, category: 'VIEWPORT', payload: { width } });
+    }
+    http.expectOne(endpoint).flush(snapshot);
+    fixture.detectChanges();
+    expect(fixture.componentInstance.events()).toHaveLength(5);
+    expect(fixture.componentInstance.count('ERROR')).toBe(3);
+    expect(fixture.nativeElement.querySelector('select')).toBeNull();
+    const context = fixture.nativeElement.querySelector('[aria-label="Contexto de los dispositivos"]');
+    expect(context.textContent).toContain('390');
+    expect(context.textContent).toContain('1365');
+    const events = fixture.nativeElement.querySelector('[aria-label="Eventos recientes"]');
+    for (const id of ['test-session', 'desktop-admin', 'other-client']) expect(events.textContent).toContain(id);
+  });
+  it('cancels a stuck polling request so later updates can proceed', () => {
+    const fixture = create();
+    const stuck = http.expectOne(endpoint);
+    vi.advanceTimersByTime(10000);
+    expect(stuck.cancelled).toBe(true);
+    expect(fixture.componentInstance.state()).toBe('reconectando');
+    vi.advanceTimersByTime(2000);
+    http.expectOne(endpoint).flush(data('Polling recovered'));
+    expect(fixture.componentInstance.state()).toBe('conectado');
   });
   it('reconnects after a transient failure without presenting stale data as current', () => {
     const fixture = create(); http.expectOne(endpoint).flush(data()); vi.advanceTimersByTime(3000);

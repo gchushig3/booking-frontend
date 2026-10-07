@@ -41,6 +41,13 @@ describe('Administrator booking settings', () => {
     http.expectOne(request => request.method === 'GET' && request.params.get('time') === '11:00').flush({ available_spots: 0 });
     expect(component.availability()).toContain('0 cupos');
   });
+  it('prevents opening cupos without a reservable experience', () => {
+    component.slot.setValue({ date: '2026-10-10', time: '11:00', capacidad_total: 10 });
+    component.saveSlot();
+    expect(component.tab()).toBe('experiences');
+    expect(component.error()).toContain('crea una experiencia');
+    http.expectNone(request => request.method === 'PUT');
+  });
   it('rejects inconsistent participant limits without sending a request', () => {
     component.experience.patchValue({ nombre_paquete: 'Tour', min_participantes: 10, max_participantes: 2 });
     component.saveExperience();

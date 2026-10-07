@@ -1,7 +1,7 @@
 import { HttpBackend, HttpClient } from '@angular/common/http';
 import { Injectable, OnDestroy, inject, signal } from '@angular/core';
 import { NavigationEnd, NavigationStart, Router } from '@angular/router';
-import { Subscription } from 'rxjs';
+import { Subscription, timeout } from 'rxjs';
 import { API_URL } from '../core/api.config';
 import { BrowserEvent, TelemetryCategory, safeTelemetryText, safeTelemetryUrl } from '../contracts/telemetry.contracts';
 export type ObservabilityCategory = 'navigation' | 'click' | 'http' | 'js' | 'auth' | 'search' | 'filter' | 'booking' | 'modal' | 'system';
@@ -26,7 +26,6 @@ export class ObservabilityService implements OnDestroy {
   private sending = false;
   private destroyed = false;
   private lastFlush = 0;
-  private failures = 0;
   constructor() {
     try { localStorage.removeItem('viveloeu_analytics_events'); localStorage.removeItem('booking-observability:v1'); } catch { /* storage unavailable */ }
     this.captureCapabilities(); this.captureViewport(); this.captureConnection();
@@ -80,7 +79,14 @@ export class ObservabilityService implements OnDestroy {
     if (type === 'js') this.record('ERROR', name === 'unhandled_rejection' ? name : name === 'window_error' ? name : 'angular_error', { message: this.errorReason(details?.['message'] ?? details?.['reason'] ?? 'Application error') });
     else this.record('DOMAIN', 'application_event', { action: safeTelemetryText(name) });
   }
-  trackEvent(eventType: Exclude<AnalyticsEventType, 'HTTP_LATENCY'>, _payload: Record<string, unknown>) { this.record('DOMAIN', 'application_event', { action: eventType }); }
+  trackEvent(eventType: Exclude<AnalyticsEventType, 'HTTP_LATENCY'>, details: Record<string, unknown>) {
+    const payload: BrowserEvent['payload'] = { action: eventType };
+    // Only technical fields already accepted by ingestion; no form values.
+    for (const key of ['step', 'result'] as const) {
+      if (typeof details[key] === 'string') payload[key] = safeTelemetryText(details[key]);
+    }
+    this.record('DOMAIN', 'application_event', payload);
+  }
   recordHttp(method: string, url: string, durationMs: number, status: number, error = false) {
     if (/\/observabilidad(?:\/|$)/.test(url)) return;
     this.record('HTTP', error ? 'http_error' : 'http_request', { method, url: safeTelemetryUrl(url), durationMs: Math.max(0, Math.round(durationMs)), status });
@@ -117,16 +123,17 @@ export class ObservabilityService implements OnDestroy {
   }
   flush() {
     if (this.destroyed || this.sending || !this.queue.length) return;
+    if (Date.now() - this.lastFlush < 3100) return;
     this.queue = this.queue.filter(event => Date.now() - Date.parse(event.timestamp) < 300000);
     if (!this.queue.length) return;
     const batch = this.queue.splice(0, 20); this.sending = true; this.lastFlush = Date.now();
-    this.inFlight = this.http.post(this.endpoint, { events: batch }).subscribe({
-      next: () => { this.sending = false; this.failures = 0; },
-      error: () => { this.sending = false; if (++this.failures <= 3) this.queue = [...batch, ...this.queue].slice(-100); },
+    this.inFlight = this.http.post(this.endpoint, { events: batch }).pipe(timeout({ first: 10000 })).subscribe({
+      next: () => { this.sending = false; },
+      error: () => { this.sending = false; this.queue = [...batch, ...this.queue].slice(-100); },
     });
   }
   private flushBeacon() {
-    if (!this.queue.length || this.sending || typeof navigator.sendBeacon !== 'function') { this.flush(); return; }
+    if (!this.queue.length || typeof navigator.sendBeacon !== 'function') { this.flush(); return; }
     const batch = this.queue.slice(0, 20);
     try { if (navigator.sendBeacon(this.endpoint, new Blob([JSON.stringify({ events: batch })], { type: 'application/json' }))) this.queue.splice(0, batch.length); else this.flush(); } catch { this.flush(); }
   }

@@ -7,7 +7,7 @@
   </header>
   @if (snapshot(); as data) {
     <section aria-label="Resumen" class="rounded-xl border bg-white p-4">
-      <h3 class="text-lg font-bold">Resumen de los últimos {{ data.summary.sampleSize }} eventos</h3>
+      <h3 class="text-lg font-bold">Resumen de {{ events().length }} eventos recientes de todos los clientes y dispositivos</h3>
       <p class="text-sm text-slate-600">Muestra limitada a {{ data.summary.sampleLimit }} eventos recibidos; no representa totales históricos ni disponibilidad del sistema. Telemetría reportada por navegadores, sin identidad verificada.</p>
       <dl class="mt-3 grid gap-3 sm:grid-cols-3">
         <div><dt>Errores JavaScript</dt><dd>{{ javascriptErrors() }}</dd></div>
@@ -22,24 +22,31 @@
         <p class="text-xs text-slate-600">{{ entry.route }} · {{ entry.timestamp | date:'medium' }} · sesión técnica {{ entry.sessionId }}</p>
       } @else { <p>No hay mediciones de carga disponibles en la muestra.</p> }
       @if (routePerformance(); as entry) { <p class="mt-2 text-sm">Última navegación interna: {{ metric(entry, 'durationMs') | number:'1.0-2' }} ms · {{ entry.route }}</p> }
-      <p class="mt-2 text-sm">Navegaciones completas medidas: {{ data.summary.navigationSamples }}</p>
-      @if (data.summary.averageLoadMs !== null) { <p>Promedio de carga en la muestra: {{ data.summary.averageLoadMs | number:'1.0-2' }} ms</p> }
+      <p class="mt-2 text-sm">Navegaciones completas medidas en la muestra global: {{ data.summary.navigationSamples }}</p>
+      @if (data.summary.averageLoadMs !== null) { <p>Promedio de carga en la muestra global: {{ data.summary.averageLoadMs | number:'1.0-2' }} ms</p> }
       @else { <p class="text-sm text-slate-600">Promedio disponible a partir de dos mediciones de carga.</p> }
     </section>
-    <section aria-label="Contexto del navegador" class="grid gap-4 lg:grid-cols-3">
-      @for (category of clientCategories; track category) {
+    <section aria-label="Contexto de los dispositivos" class="space-y-3">
+      <h3 class="text-lg font-bold">Contexto de los dispositivos</h3>
+      <p class="text-sm text-slate-600">Información reportada por todos los navegadores presentes en la muestra. Algunos dispositivos no permiten medir todas las capacidades.</p>
+      @for (device of deviceContexts(); track device.id) {
         <article class="min-w-0 rounded-xl border bg-white p-4">
-          <h3 class="font-bold">{{ category }}</h3>
-          @if (latest(category); as entry) {
-            <p class="mt-2 break-all text-xs text-slate-600">Sesión técnica: {{ entry.sessionId }} · {{ entry.timestamp | date:'medium' }}</p>
-            <pre class="mt-2 whitespace-pre-wrap break-words text-xs">{{ entry.payload | json }}</pre>
-          } @else { <p class="text-sm">Sin datos en la muestra.</p> }
+          <p class="break-all text-xs text-slate-600">Identificador técnico: {{ device.id }}</p>
+          <div class="mt-3 grid gap-4 lg:grid-cols-3">
+            @for (entry of device.entries; track entry.category) {
+              <div class="min-w-0">
+                <h4 class="font-bold">{{ entry.category }}</h4>
+                <p class="text-xs text-slate-600">{{ entry.timestamp | date:'medium' }}</p>
+                <pre class="mt-2 whitespace-pre-wrap break-words text-xs">{{ entry.payload | json }}</pre>
+              </div>
+            }
+          </div>
         </article>
-      }
+      } @empty { <p class="text-sm">Sin datos de dispositivos en la muestra.</p> }
     </section>
     <section aria-label="Eventos recientes">
       <h3 class="mb-3 text-lg font-bold">Eventos recientes</h3>
-      @if (!events().length) { <p>No hay eventos persistidos todavía.</p> }
+      @if (!events().length) { <p>No hay eventos recibidos todavía.</p> }
       <ol class="space-y-3">
         @for (entry of events(); track entry.id) {
           <li class="min-w-0 rounded-xl border bg-white p-4">
