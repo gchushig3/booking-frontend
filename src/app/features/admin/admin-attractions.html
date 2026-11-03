@@ -1,6 +1,6 @@
 <section aria-labelledby="admin-attractions-title">
   <div class="flex flex-wrap items-center justify-between gap-4">
-    <div><p class="text-xs font-bold uppercase tracking-widest text-teal-700">Tu catálogo</p><h2 id="admin-attractions-title" class="mt-1 text-2xl font-bold">Atracciones</h2><p class="mt-1 text-sm text-slate-600">Crea la ficha, prepara las experiencias y abre cupos para tus visitantes.</p></div>
+    <div><p class="text-xs font-bold uppercase tracking-widest text-teal-700">Tu catálogo</p><h2 id="admin-attractions-title" class="mt-1 text-2xl font-bold">Atracciones</h2><p class="mt-1 text-sm text-slate-600">Administra las fichas y su proyección de tarifas, inclusiones e itinerario para Booking.</p></div>
     @if (mode() === 'list' && !availabilityFor()) { <button type="button" (click)="startCreate()" class="rounded-xl bg-teal-700 px-5 py-3 font-semibold text-white shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700">+ Crear atracción</button> }
   </div>
   @if (feedback()) { <p role="status" class="mt-4 rounded-xl border border-teal-200 bg-teal-50 p-4 text-sm text-teal-900">{{ feedback() }}</p> }
@@ -14,8 +14,8 @@
     @for (selected of [availabilityFor()!]; track selected.id) { <app-booking-settings [attraction]="selected" /> }
   } @else {
     <div class="mt-6 rounded-2xl border border-teal-100 bg-teal-50 p-5">
-      <h3 class="font-bold text-teal-900">Una atracción lista para reservar en tres pasos</h3>
-      <ol class="mt-3 grid gap-3 text-sm text-teal-900 sm:grid-cols-3"><li><span class="font-bold">1. Crea la ficha</span><p class="mt-1">Nombre, descripción y fotografías.</p></li><li><span class="font-bold">2. Agrega experiencias</span><p class="mt-1">Modalidad, precio y participantes.</p></li><li><span class="font-bold">3. Abre turnos</span><p class="mt-1">Fecha, horario y cupos disponibles.</p></li></ol>
+      <h3 class="font-bold text-teal-900">Publica una atracción para Booking</h3>
+      <ol class="mt-3 grid gap-3 text-sm text-teal-900 sm:grid-cols-3"><li><span class="font-bold">1. Crea la ficha</span><p class="mt-1">El backend la guarda como borrador.</p></li><li><span class="font-bold">2. Configura Booking</span><p class="mt-1">Tarifas, inclusiones, itinerario y horarios.</p></li><li><span class="font-bold">3. Publica</span><p class="mt-1">La búsqueda por fecha usa el aforo sincronizado desde Inventory.</p></li></ol>
     </div>
     <form (submit)="$event.preventDefault(); search()" class="mt-6 flex flex-wrap items-end gap-3 rounded-2xl border border-stone-200 bg-white p-4">
       <label class="min-w-48 flex-1"><span class="text-sm font-semibold">Buscar atracción por nombre</span><input type="search" [value]="searchText()" (input)="searchText.set($any($event.target).value)" placeholder="Ej. Cotopaxi" class="mt-2 block w-full rounded-xl border border-stone-300 p-3"></label>
@@ -32,8 +32,8 @@
       <div class="mt-3 grid gap-4 lg:grid-cols-2">
         @for (item of rows(); track item.id) {
           <article class="flex flex-col rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
-            <div class="flex gap-4"><div class="min-w-0 flex-1"><h3 class="text-lg font-bold text-slate-900">{{ item.name }}</h3><p class="mt-1 text-sm text-slate-500">{{ item.provincia || 'Ubicación por completar' }} {{ item.region ? '· ' + item.region : '' }}</p><p class="mt-3 text-sm text-slate-600">{{ item.categories.join(' · ') || item.categoria }} · {{ item.price.total | currency:(item.price.currency || 'USD') }} de referencia</p></div></div>
-            <div class="mt-4 flex flex-wrap gap-2 border-t border-stone-100 pt-4"><button type="button" (click)="startEdit(item)" class="rounded-xl border border-stone-300 px-4 py-2 text-sm font-semibold">Editar ficha</button><button type="button" (click)="openAvailability(item)" class="rounded-xl bg-teal-700 px-4 py-2 text-sm font-semibold text-white">Experiencias y disponibilidad</button><button type="button" (click)="askDeactivate(item)" class="ml-auto rounded-xl px-3 py-2 text-sm text-red-700">Desactivar atracción</button></div>
+            <div class="flex gap-4"><div class="min-w-0 flex-1"><h3 class="text-lg font-bold text-slate-900">{{ item.name }}</h3><p class="mt-1 text-sm text-slate-500">{{ item.city || 'Ubicación por completar' }} · {{ item.status || 'PUBLICADA' }}</p>@if (item.bookingPrice; as price) { <p class="mt-3 text-sm text-slate-600">{{ item.categories.join(' · ') || item.categoria }} · {{ price.adult | currency:price.currency }} por adulto</p> } @else { <p class="mt-3 text-sm text-slate-600">Perfil Booking pendiente</p> }</div></div>
+            <div class="mt-4 flex flex-wrap gap-2 border-t border-stone-100 pt-4"><button type="button" (click)="startEdit(item)" class="rounded-xl border border-stone-300 px-4 py-2 text-sm font-semibold">Editar ficha</button><button type="button" (click)="openAvailability(item)" class="rounded-xl bg-teal-700 px-4 py-2 text-sm font-semibold text-white">Perfil Booking</button><button type="button" (click)="askDeactivate(item)" class="ml-auto rounded-xl px-3 py-2 text-sm text-red-700">Desactivar atracción</button></div>
           </article>
         }
       </div>
@@ -46,7 +46,7 @@
   <div class="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/60 p-4" (click)="deactivating() ? null : cancelDeactivate()">
     <section #confirmation class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl" role="alertdialog" aria-modal="true" aria-labelledby="deactivate-title" aria-describedby="deactivate-description" (keydown)="confirmationKey($event)" (click)="$event.stopPropagation()">
       <h3 id="deactivate-title" class="text-xl font-bold">¿Desactivar esta atracción?</h3>
-      <p id="deactivate-description" class="mt-2 text-sm leading-6 text-slate-600">Se desactivará <span class="font-semibold">{{ item.name }}</span>. Podrás seguir consultando las reservas existentes.</p>
+      <p id="deactivate-description" class="mt-2 text-sm leading-6 text-slate-600">El estado de <span class="font-semibold">{{ item.name }}</span> cambiará a INACTIVA y dejará de aparecer en las búsquedas públicas.</p>
       <div class="mt-6 flex justify-end gap-3">
         <button type="button" (click)="cancelDeactivate()" [disabled]="deactivating()" class="rounded-xl border px-4 py-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700">Volver</button>
         <button type="button" (click)="confirmDeactivate()" [disabled]="deactivating()" class="rounded-xl bg-red-700 px-4 py-2 text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700">{{ deactivating() ? 'Desactivando...' : 'Sí, desactivar' }}</button>

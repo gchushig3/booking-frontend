@@ -1,66 +1,83 @@
-import { TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { API_URL } from '../../core/api.config';
+import { API_URL, CATALOG_API_URL } from '../../core/api.config';
 import { attraction } from '../../testing/booking.fixtures';
 import { BookingSettings } from './booking-settings';
 
-describe('Administrator booking settings', () => {
+describe('Booking integration profile', () => {
+  let fixture: ComponentFixture<BookingSettings>;
   let component: BookingSettings;
   let http: HttpTestingController;
-  beforeEach(async () => {
-    await TestBed.configureTestingModule({
+  beforeEach(() => {
+    TestBed.configureTestingModule({
       imports: [BookingSettings],
-      providers: [provideHttpClient(), provideHttpClientTesting(), { provide: API_URL, useValue: '/api/v1' }],
-    }).compileComponents();
-    const fixture = TestBed.createComponent(BookingSettings);
+      providers: [
+        provideHttpClient(), provideHttpClientTesting(),
+        { provide: API_URL, useValue: '/api/v1' },
+        { provide: CATALOG_API_URL, useValue: '/api/v2' },
+      ],
+    });
+    fixture = TestBed.createComponent(BookingSettings);
     component = fixture.componentInstance;
     http = TestBed.inject(HttpTestingController);
     fixture.componentRef.setInput('attraction', attraction);
     fixture.detectChanges();
-    http.expectOne(`/api/v1/atracciones/${attraction.id}/paquetes`).flush([]);
+    http.expectOne('/api/v2/atracciones/' + attraction.id)
+      .flush({ message: 'Draft attraction has no public detail' }, { status: 404, statusText: 'Not Found' });
   });
-  afterEach(() => http.verify());
-  it('creates a reservable experience with its price and limits', () => {
-    component.experience.setValue({ nombre_paquete: 'Tour guiado', tipo_experiencia: 'GUIDED_TOUR', precio_unitario: 25, min_participantes: 1, max_participantes: 10 });
-    component.saveExperience();
-    const req = http.expectOne(`/api/v1/atracciones/${attraction.id}/paquetes`);
-    expect(req.request.method).toBe('POST');
-    expect(req.request.body.precio_unitario).toBe(25);
-    req.flush({ id: 'package-id' });
-    http.expectOne(`/api/v1/atracciones/${attraction.id}/paquetes`).flush([]);
-    expect(component.message()).toContain('Experiencia guardada');
+  afterEach(() => { fixture.destroy(); http.verify(); });
+
+  it('saves the booking profile through the PUT endpoint and then publishes', () => {
+    component.form.patchValue({
+      city: 'Quito',
+      currency: 'USD',
+      adult: 35,
+      child: 18,
+      senior: 25,
+      infant: 0,
+      schedule_times: '09:00\n13:30',
+      itinerary_json: JSON.stringify([{ stop_number: 1, time: '09:00', title: 'Plaza Grande', duration_minutes: 30 }]),
+      ratings_json: '{"servicio":4.5}',
+    });
+    component.save();
+    const request = http.expectOne('/api/v2/atracciones/' + attraction.id + '/booking');
+    expect(request.request.method).toBe('PUT');
+    expect(request.request.body).toEqual({
+      city: 'Quito',
+      price: { currency: 'USD', adult: 35, child: 18, senior: 25, infant: 0 },
+      inclusions: { includes_food: false, includes_transport: false, includes_guide: false },
+      itinerary: [{ stop_number: 1, time: '09:00', title: 'Plaza Grande', duration_minutes: 30 }],
+      ratings_breakdown: { servicio: 4.5 },
+      accessibility: { wheelchair_accessible: false, service_animals_allowed: false },
+      permite_paquete: false,
+      schedule_times: ['09:00:00', '13:30:00'],
+    });
+    request.flush({ id: attraction.id });
+    expect(component.profileSaved()).toBe(true);
+
+    component.publish();
+    const publish = http.expectOne('/api/v2/atracciones/' + attraction.id + '/estado');
+    expect(publish.request.method).toBe('PATCH');
+    expect(publish.request.body).toEqual({ status: 'PUBLICADA' });
+    publish.flush({ id: attraction.id, status: 'PUBLICADA' });
+    expect(component.isPublished()).toBe(true);
   });
-  it('saves a closed turn with zero capacity and checks its availability', () => {
-    component.slot.setValue({ date: '2026-10-10', time: '11:00', capacidad_total: 0 });
-    component.saveSlot();
-    const req = http.expectOne(`/api/v1/atracciones/${attraction.id}/availability`);
-    expect(req.request.method).toBe('PUT');
-    expect(req.request.body.capacidad_total).toBe(0);
-    req.flush({});
-    http.expectOne(request => request.method === 'GET' && request.params.get('time') === '11:00').flush({ available_spots: 0 });
-    expect(component.availability()).toContain('0 cupos');
-  });
-  it('prevents opening cupos without a reservable experience', () => {
-    component.slot.setValue({ date: '2026-10-10', time: '11:00', capacidad_total: 10 });
-    component.saveSlot();
-    expect(component.tab()).toBe('experiences');
-    expect(component.error()).toContain('crea una experiencia');
+
+  it('rejects malformed JSON and invalid horarios without calling the API', () => {
+    component.form.patchValue({ city: 'Quito', itinerary_json: '{', schedule_times: '9:00' });
+    component.save();
+    expect(component.error()).toContain('JSON válido');
     http.expectNone(request => request.method === 'PUT');
   });
-  it('rejects inconsistent participant limits without sending a request', () => {
-    component.experience.patchValue({ nombre_paquete: 'Tour', min_participantes: 10, max_participantes: 2 });
-    component.saveExperience();
-    expect(component.error()).toBeTruthy();
-    http.expectNone(request => request.method === 'POST');
-  });
-  it('preserves packages with unlimited participants when editing', () => {
-    component.edit({ id: 'pkg', atraccion_id: attraction.id, tipo_experiencia: 'GUIDED_TOUR', nombre_paquete: 'Tour', descripcion: null, precio_unitario: 25, moneda: 'USD', min_participantes: 1, max_participantes: null, politicas_json: {} });
-    component.saveExperience();
-    const req = http.expectOne(`/api/v1/atracciones/${attraction.id}/paquetes/pkg`);
-    expect(req.request.method).toBe('PUT');
-    expect(req.request.body.max_participantes).toBeNull();
-    req.flush({ id: 'pkg' });
-    http.expectOne(`/api/v1/atracciones/${attraction.id}/paquetes`).flush([]);
+
+  it('blocks editing a published profile when the detail omits its saved schedule', () => {
+    fixture.componentRef.setInput('attraction', { ...attraction, status: 'PUBLICADA' });
+    fixture.detectChanges();
+    http.expectOne('/api/v2/atracciones/' + attraction.id)
+      .flush({ id: attraction.id, name: attraction.name, city: 'Quito', price: { currency: 'USD', adult: 35, child: 18, senior: 25, infant: 0 } });
+    expect(component.allowProfileSave()).toBe(false);
+    component.save();
+    http.expectNone(request => request.method === 'PUT');
   });
 });

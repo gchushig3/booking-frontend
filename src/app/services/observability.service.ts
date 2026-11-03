@@ -2,7 +2,7 @@ import { HttpBackend, HttpClient } from '@angular/common/http';
 import { Injectable, OnDestroy, inject, signal } from '@angular/core';
 import { NavigationEnd, NavigationStart, Router } from '@angular/router';
 import { Subscription, timeout } from 'rxjs';
-import { API_URL } from '../core/api.config';
+import { API_URL, TELEMETRY_ENABLED } from '../core/api.config';
 import { BrowserEvent, TelemetryCategory, safeTelemetryText, safeTelemetryUrl } from '../contracts/telemetry.contracts';
 export type ObservabilityCategory = 'navigation' | 'click' | 'http' | 'js' | 'auth' | 'search' | 'filter' | 'booking' | 'modal' | 'system';
 export type AnalyticsEventType = 'SEARCH' | 'VIEW_ATTRACTION' | 'SELECT_PACKAGE' | 'CHECKOUT_STEP' | 'RESERVATION_SUCCESS' | 'HTTP_LATENCY' | 'OTHER';
@@ -13,6 +13,8 @@ export class ObservabilityService implements OnDestroy {
   // Public ingestion bypasses interceptors: no JWT and no telemetry feedback loop.
   private readonly http = new HttpClient(inject(HttpBackend));
   private readonly endpoint = `${inject(API_URL)}/observabilidad/eventos`;
+  // El backend v1 de ingestion no existe en el despliegue actual; sin el, no se envia nada.
+  private readonly remoteEnabled = inject(TELEMETRY_ENABLED);
   private readonly router = inject(Router, { optional: true });
   private readonly sessionId = crypto.randomUUID();
   readonly events = signal<BrowserEvent[]>([]);
@@ -122,6 +124,7 @@ export class ObservabilityService implements OnDestroy {
     } catch { return false; }
   }
   flush() {
+    if (!this.remoteEnabled) { this.queue = []; return; }
     if (this.destroyed || this.sending || !this.queue.length) return;
     if (Date.now() - this.lastFlush < 3100) return;
     this.queue = this.queue.filter(event => Date.now() - Date.parse(event.timestamp) < 300000);
@@ -133,6 +136,7 @@ export class ObservabilityService implements OnDestroy {
     });
   }
   private flushBeacon() {
+    if (!this.remoteEnabled) { this.queue = []; return; }
     if (!this.queue.length || typeof navigator.sendBeacon !== 'function') { this.flush(); return; }
     const batch = this.queue.slice(0, 20);
     try { if (navigator.sendBeacon(this.endpoint, new Blob([JSON.stringify({ events: batch })], { type: 'application/json' }))) this.queue.splice(0, batch.length); else this.flush(); } catch { this.flush(); }

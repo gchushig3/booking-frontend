@@ -10,7 +10,7 @@ import { AuthService } from '../../services/auth.service';
   template: `
     <main class="mx-auto max-w-7xl px-5 py-8 sm:px-8">
       <h1 class="text-3xl font-bold tracking-tight">Panel de administración</h1>
-      <p class="mt-2 text-sm text-slate-600">Administra tu catálogo, prepara las experiencias y consulta las reservas desde un solo lugar.</p>
+      <p class="mt-2 text-sm text-slate-600">Administra fichas y perfiles Booking. La consulta de reservas se habilitará al publicarse el endpoint correspondiente.</p>
       <nav aria-label="Administración" class="my-6 flex flex-wrap gap-3">
         <a routerLink="/admin/atracciones" routerLinkActive="bg-teal-100" class="rounded-xl border border-stone-300 px-4 py-2 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700">Atracciones</a>
         <a routerLink="/admin/reservas" routerLinkActive="bg-teal-100" class="rounded-xl border border-stone-300 px-4 py-2 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700">Reservas</a>

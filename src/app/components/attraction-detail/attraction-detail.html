@@ -1,59 +1,109 @@
 <main class="min-h-screen bg-stone-50 px-4 py-8 text-slate-900 sm:px-8">
   <div class="mx-auto max-w-7xl">
     <nav class="mb-6 flex flex-wrap items-center gap-2 text-sm text-slate-500" aria-label="Migas de pan">
-      <a routerLink="/" class="hover:text-teal-700 hover:underline">Inicio</a><span aria-hidden="true">›</span><a routerLink="/actividades" [queryParams]="{ destino: 'Ecuador' }" class="hover:text-teal-700 hover:underline">Ecuador</a>
-      @if (attraction(); as item) { <span aria-hidden="true">›</span><a routerLink="/actividades" [queryParams]="{ destino: provinceOf(item) }" class="hover:text-teal-700 hover:underline">{{ provinceOf(item) }}</a><span aria-hidden="true">›</span><span class="font-semibold text-slate-800">{{ nameOf(item) }}</span> }
+      <a routerLink="/" class="hover:text-teal-700 hover:underline">Inicio</a>
+      <span aria-hidden="true">›</span>
+      <a routerLink="/actividades" [queryParams]="{ destino: attraction()?.city }" class="hover:text-teal-700 hover:underline">Actividades</a>
+      @if (attraction(); as item) { <span aria-hidden="true">›</span><span class="font-semibold text-slate-800">{{ nameOf(item) }}</span> }
     </nav>
-    @if (loading()) { <div class="rounded-3xl bg-white p-12 text-center text-slate-500">Cargando ficha…</div> }
-    @else if (error()) { <section class="rounded-3xl bg-white p-12 text-center"><h1 class="text-2xl font-bold">{{ notFound() ? 'No encontramos esta atracción' : 'No se pudo cargar la atracción' }}</h1><p role="alert">{{ error() }}</p><a routerLink="/actividades" class="mt-4 inline-block text-teal-700 underline">Volver a actividades</a></section> }
-    @else if (!attraction()) { <section class="rounded-3xl bg-white p-12 text-center"><h1 class="text-2xl font-bold">No encontramos esta atracción</h1><a routerLink="/actividades" class="mt-4 inline-block text-teal-700 underline">Volver a actividades</a></section> }
-    @else { @let item = attraction()!;
-      <header class="mb-6"><p class="text-sm font-bold uppercase tracking-widest text-teal-700">{{ categoryOf(item) }}</p><h1 class="mt-2 text-3xl font-black sm:text-4xl">{{ nameOf(item) }}</h1><p class="mt-2 text-slate-600">{{ cityOf(item) }} · {{ provinceOf(item) }}, Ecuador</p></header>
-      <div class="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_400px]">
+    @if (loading()) {
+      <div class="rounded-3xl bg-white p-12 text-center text-slate-500" role="status">Cargando ficha...</div>
+    } @else if (error()) {
+      <section class="rounded-3xl bg-white p-12 text-center">
+        <h1 class="text-2xl font-bold">{{ notFound() ? 'No encontramos esta atracción' : 'No se pudo cargar la atracción' }}</h1>
+        <p role="alert" class="mt-2 text-red-700">{{ error() }}</p>
+        <a routerLink="/actividades" class="mt-4 inline-block text-teal-700 underline">Volver a actividades</a>
+      </section>
+    } @else if (attraction(); as item) {
+      <header class="mb-6">
+        <p class="text-sm font-bold uppercase tracking-widest text-teal-700">{{ categoryOf(item) }}</p>
+        <h1 class="mt-2 text-3xl font-black sm:text-4xl">{{ nameOf(item) }}</h1>
+        <p class="mt-2 text-slate-600">{{ cityOf(item) }} · {{ item.duration }}</p>
+      </header>
+      <div class="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div class="min-w-0 space-y-8">
           <section class="grid min-h-72 grid-cols-2 gap-2 overflow-hidden rounded-3xl bg-stone-200 sm:min-h-[430px]" aria-label="Galería fotográfica">
-            @if (images().length) { @for (image of images().slice(0, 4); track image; let i = $index) { <img [src]="image" [alt]="nameOf(item) + ' — fotografía ' + (i + 1)" [class.row-span-2]="i === 0" [class.col-span-2]="images().length === 1" class="h-full min-h-36 w-full object-cover" [class.hidden]="i > 0 && images().length === 1" loading="lazy"> } }
-            @else { <div class="col-span-2 grid min-h-72 place-items-center bg-gradient-to-br from-teal-100 to-stone-200 text-teal-900 sm:min-h-[430px]">Fotografías no disponibles</div> }
-          </section>
-          <section class="rounded-3xl bg-white p-6 shadow-sm sm:p-8"><h2 class="text-2xl font-bold">Sobre esta experiencia</h2><p class="mt-4 whitespace-pre-line leading-7 text-slate-600">{{ item.long_description || 'Descubre esta experiencia en Ecuador.' }}</p><h3 class="mt-7 font-bold">Qué incluye</h3><ul class="mt-3 grid gap-2 sm:grid-cols-2">@for (include of includesOf(item); track include) { <li class="flex items-start gap-2 text-sm text-slate-600"><span class="text-teal-700">✓</span>{{ include }}</li> }</ul></section>
-        </div>
-        <aside class="lg:sticky lg:top-24 rounded-3xl border border-stone-200 bg-white p-5 shadow-lg sm:p-6" aria-labelledby="tickets-heading">
-          <h2 id="tickets-heading" class="text-2xl font-black">Tickets y Disponibilidad</h2><p class="mt-1 text-sm text-slate-500">Elige la experiencia, fecha y turno.</p>
-          <button type="button" (click)="refreshBooking()" [disabled]="packagesRefreshing()" class="mt-3 rounded-lg border px-3 py-2 text-sm text-teal-800 disabled:opacity-50">{{ packagesRefreshing() ? 'Actualizando...' : 'Actualizar experiencias y cupos' }}</button>
-          @if (packagesError()) { <p role="alert" class="mt-4 text-red-700">{{ packagesError() }}</p> }
-          @else if (!packages().length) { <p class="mt-4 text-slate-600">No hay experiencias disponibles para reservar esta atracción. Todavía no se han configurado opciones reservables. Esta sección se actualiza automáticamente.</p> }
-          <div class="mt-5 space-y-3">@for (option of packages(); track option.id) {
-            <article [class.border-teal-700]="selectedPackage()?.id === option.id" [class.bg-teal-50]="selectedPackage()?.id === option.id" class="rounded-2xl border border-stone-200 p-4 transition">
-              <button type="button" class="w-full text-left" (click)="choose(option)" [attr.aria-pressed]="selectedPackage()?.id === option.id"><span class="flex items-start justify-between gap-3"><span><span class="font-bold">{{ option.nombre_paquete }}</span><span class="mt-1 block text-xs leading-5 text-slate-600">{{ option.descripcion }}</span></span><span class="shrink-0 text-right text-sm font-bold">{{ option.precio_unitario | currency:option.moneda }}<span class="block text-[10px] font-normal text-slate-500">precio unitario</span></span></span><span class="mt-3 block text-sm font-bold text-teal-800 underline">{{ selectedPackage()?.id === option.id ? 'Paquete seleccionado' : 'Seleccionar paquete' }}</span></button>
-              <p class="mt-2 text-xs text-teal-900">Mínimo {{ option.min_participantes }} participantes @if (option.max_participantes !== null) { · Máximo {{ option.max_participantes }} }</p>
-              <details class="mt-3 rounded-xl border border-stone-200 bg-stone-50 p-3"><summary class="cursor-pointer text-sm font-bold">Políticas del paquete</summary><ul class="mt-2 space-y-2 text-xs">@for (policy of policiesOf(option); track $index) { <li>{{ policy }}</li> } @empty { <li>No se proporcionaron pol?ticas adicionales para este paquete.</li> }</ul></details>
-            </article>
-          }</div>
-          @if (selectedPackage()) {
-            <label class="mt-5 block text-sm font-semibold">Fecha<input type="date" [min]="minDate" [value]="date()" (change)="selectDate($any($event.target).value)" class="mt-2 w-full rounded-xl border border-stone-300 px-3 py-3"></label>
-            @if (scheduleForm.controls.date.invalid) { <p role="alert" class="text-sm text-red-700">Selecciona hoy o una fecha futura.</p> }
-            @if (availabilityLoading()) { <p class="mt-3 text-sm text-slate-500" aria-live="polite">Consultando horarios...</p> }
-            @if (availabilityError()) { <p role="alert" class="mt-3 text-sm text-red-700">{{ availabilityError() }}</p><button type="button" (click)="loadAvailability()" class="text-sm underline">Reintentar disponibilidad</button> }
-            @else if (availability(); as slots) {
-              @if (slots.times.length) { <label class="mt-4 block text-sm font-semibold">Horario / turno<select [formControl]="scheduleForm.controls.time" (change)="selectTime($any($event.target).value)" class="mt-2 w-full rounded-xl border border-stone-300 bg-white px-3 py-3"><option value="">Selecciona un horario</option>@for (time of slots.times; track time) { <option [value]="time">{{ time }}</option> }</select></label> }
-              @if (!slots.times.length) { <p role="status" class="mt-3 text-sm text-amber-700">No hay horarios disponibles para esta fecha.</p> }
-              @if (!availabilityLoading()) { @if (slots.available_spots > 0) { <p class="mt-2 text-xs text-emerald-700">{{ slots.available_spots }} cupos disponibles</p> } @else { <p class="mt-3 text-sm font-semibold text-amber-700">Sin cupos disponibles para esta fecha y turno.</p> } }
+            @if (images().length) {
+              @for (image of images().slice(0, 4); track image; let i = $index) {
+                <img [src]="imageOf(item, i)" [alt]="nameOf(item) + ' — fotografía ' + (i + 1)" [class.row-span-2]="i === 0" [class.col-span-2]="images().length === 1" class="h-full min-h-36 w-full object-cover" [class.hidden]="i > 0 && images().length === 1" loading="lazy">
+              }
+            } @else {
+              <div class="col-span-2 grid min-h-72 place-items-center bg-gradient-to-br from-teal-100 to-stone-200 text-teal-900 sm:min-h-[430px]">Fotografías no disponibles</div>
             }
-            <form [formGroup]="participantsForm" class="mt-4 space-y-3">
-              <label class="flex items-center justify-between gap-3 text-sm font-semibold">Adultos<input type="number" min="0" step="1" formControlName="num_adultos" class="w-24 rounded-xl border border-stone-300 p-2"></label>
-              <label class="flex items-center justify-between gap-3 text-sm font-semibold">Niños<input type="number" min="0" step="1" formControlName="num_ninos" class="w-24 rounded-xl border border-stone-300 p-2"></label>
-              <div formArrayName="ninos" class="space-y-2">@for (age of participantsForm.controls.ninos.controls; track age; let i = $index) {
-                <label class="block text-sm">Niño {{ i + 1 }} — Edad<input type="number" min="0" max="17" step="1" [formControlName]="i" class="mt-1 w-full rounded-xl border border-stone-300 p-2"></label>
-                @if (age.touched && age.invalid) { <p role="alert" class="text-xs text-red-700">Ingresa una edad entera entre 0 y 17 años.</p> }
-              }</div>
-              @if (participantMessage()) { <p role="alert" class="text-xs text-red-700">{{ participantMessage() }}</p> }
-              @if (freeChildAge() !== null) { <p class="text-xs text-teal-900">Política del paquete: niños de hasta {{ freeChildAge() }} años sin costo.</p> }
-              <p class="text-xs text-slate-600">Cada adulto y cada niño ocupa un cupo, independientemente de su tarifa.</p>
-            </form>
-            <div class="mt-4 rounded-xl bg-teal-50 p-4 text-sm">{{ adults() }} adultos · {{ children() }} niños<p class="mt-1 font-semibold">@if (total() !== null) { Total a pagar: {{ total() | currency:selectedPackage()!.moneda }} } @else { Completa las edades para calcular el total. }</p></div>
+          </section>
+          <section class="rounded-3xl bg-white p-6 shadow-sm sm:p-8">
+            <h2 class="text-2xl font-bold">Sobre esta experiencia</h2>
+            <p class="mt-4 whitespace-pre-line leading-7 text-slate-600">{{ item.description || item.long_description }}</p>
+            <h3 class="mt-7 font-bold">Qué incluye</h3>
+            <ul class="mt-3 grid gap-2 sm:grid-cols-2">
+              @for (include of includesOf(item); track include) { <li class="flex items-start gap-2 text-sm text-slate-600"><span class="text-teal-700">✓</span>{{ include }}</li> }
+              @empty { <li class="text-sm text-slate-500">El operador no registró inclusiones.</li> }
+            </ul>
+          </section>
+          @if (item.itinerary?.length) {
+            <section class="rounded-3xl bg-white p-6 shadow-sm sm:p-8">
+              <h2 class="text-2xl font-bold">Itinerario</h2>
+              <ol class="mt-5 space-y-4">
+                @for (stop of item.itinerary; track stop.stop_number) {
+                  <li class="flex gap-4 border-l-2 border-teal-200 pl-4">
+                    <span class="shrink-0 font-semibold text-teal-800">{{ stop.time }}</span>
+                    <div><h3 class="font-bold">{{ stop.title }}</h3><p class="text-sm text-slate-600">{{ stop.duration_minutes }} min</p></div>
+                  </li>
+                }
+              </ol>
+            </section>
           }
-          @if (advanceMessage()) { <p id="booking-next-help" role="status" class="mt-4 text-sm text-slate-600">{{ advanceMessage() }}</p> }
-          <button [attr.aria-describedby]="advanceMessage() ? 'booking-next-help' : null" type="button" (click)="next()" [disabled]="!canAdvance()" class="mt-5 w-full rounded-xl bg-teal-700 px-5 py-4 text-sm font-bold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-45">Siguiente: Datos de la Reserva</button>
+          @if (item.meetingPoint; as meeting) {
+            <section class="rounded-3xl bg-white p-6 shadow-sm sm:p-8">
+              <h2 class="text-xl font-bold">Punto de encuentro</h2>
+              <p class="mt-2 text-slate-600">{{ meeting.address }}</p>
+              <p class="mt-1 text-sm text-slate-500">Coordenadas: {{ meeting.latitude }}, {{ meeting.longitude }}</p>
+            </section>
+          }
+        </div>
+        <aside class="lg:sticky lg:top-24 rounded-3xl border border-stone-200 bg-white p-5 shadow-lg sm:p-6">
+          <h2 class="text-2xl font-black">Tarifas por persona</h2>
+          @if (item.bookingPrice; as price) {
+            <dl class="mt-4 space-y-3">
+              <div class="flex justify-between gap-3"><dt>Adulto</dt><dd class="font-semibold">{{ price.adult | currency:price.currency }}</dd></div>
+              <div class="flex justify-between gap-3"><dt>Niño</dt><dd class="font-semibold">{{ price.child | currency:price.currency }}</dd></div>
+              <div class="flex justify-between gap-3"><dt>Adulto mayor</dt><dd class="font-semibold">{{ price.senior | currency:price.currency }}</dd></div>
+              <div class="flex justify-between gap-3"><dt>Infante</dt><dd class="font-semibold">{{ price.infant | currency:price.currency }}</dd></div>
+              @if (price.student !== undefined) { <div class="flex justify-between gap-3"><dt>Estudiante</dt><dd class="font-semibold">{{ price.student | currency:price.currency }}</dd></div> }
+            </dl>
+          } @else {
+            <p class="mt-3 text-sm text-slate-600">El operador aún no ha publicado las tarifas del perfil Booking.</p>
+          }
+          <form class="mt-5 space-y-3 border-t pt-5" (submit)="$event.preventDefault(); reserve(item)" aria-label="Reservar">
+            <label class="block text-sm font-semibold">Fecha
+              <input type="date" name="fecha" required [min]="minDate" [max]="maxDate" [value]="date()" (input)="date.set($any($event.target).value)" class="mt-1 w-full rounded-xl border border-stone-300 px-3 py-2">
+            </label>
+            <label class="block text-sm font-semibold">Horario
+              <select name="hora" [value]="time()" (change)="time.set($any($event.target).value)" class="mt-1 w-full rounded-xl border border-stone-300 px-3 py-2">
+                @for (t of times; track t) { <option [value]="t" [selected]="t === time()">{{ t }}</option> }
+              </select>
+            </label>
+            <div class="flex items-center justify-between text-sm">
+              <span class="font-semibold">Adultos</span>
+              <span class="flex items-center gap-3"><button type="button" aria-label="Menos adultos" (click)="change('adults', -1)" class="h-8 w-8 rounded-full border">−</button><output>{{ adults() }}</output><button type="button" aria-label="Más adultos" (click)="change('adults', 1)" class="h-8 w-8 rounded-full border">+</button></span>
+            </div>
+            <div class="flex items-center justify-between text-sm">
+              <span class="font-semibold">Niños</span>
+              <span class="flex items-center gap-3"><button type="button" aria-label="Menos niños" (click)="change('children', -1)" class="h-8 w-8 rounded-full border">−</button><output>{{ children() }}</output><button type="button" aria-label="Más niños" (click)="change('children', 1)" class="h-8 w-8 rounded-full border">+</button></span>
+            </div>
+            @if (item.bookingPrice; as price) {
+              <p class="flex justify-between border-t pt-3 text-lg font-black"><span>Total</span><span>{{ total() | currency:price.currency }}</span></p>
+            }
+            <button type="submit" class="block w-full rounded-xl bg-teal-700 px-4 py-3 text-center font-semibold text-white hover:bg-teal-800">Reservar</button>
+          </form>
+          @if (item.free_cancellation) { <p class="mt-4 text-center text-sm text-emerald-800">Cancelación gratuita hasta {{ item.cancellationHours ?? 24 }} horas antes</p> }
+          @if (item.accessibility; as accessibility) {
+            <div class="mt-5 border-t pt-4 text-sm">
+              <h3 class="font-bold">Accesibilidad</h3>
+              @if (accessibility.wheelchair_accessible !== undefined) { <p class="mt-2">Silla de ruedas: {{ accessibility.wheelchair_accessible ? 'Sí' : 'No' }}</p> }
+              @if (accessibility.service_animals_allowed !== undefined) { <p class="mt-1">Animales de asistencia: {{ accessibility.service_animals_allowed ? 'Sí' : 'No' }}</p> }
+            </div>
+          }
         </aside>
       </div>
     }

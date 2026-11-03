@@ -1,16 +1,16 @@
 import { Routes } from '@angular/router';
-import { Component } from '@angular/core';
 import { ActivityResults } from './components/activity-results/activity-results';
 import { AttractionDetail } from './components/attraction-detail/attraction-detail';
+import { HomePage } from './features/home/home-page';
+import { CheckoutPage } from './features/booking/checkout-page';
+import { MyReservations } from './features/booking/my-reservations';
 import { adminGuard } from './guards/admin.guard';
 
-@Component({ standalone: true, template: '' })
-class HomeRouteMarker {}
-
 export const routes: Routes = [
-  { path: '', pathMatch: 'full', component: HomeRouteMarker },
-  { path: 'reservas', component: HomeRouteMarker },
-  { path: 'historial', component: HomeRouteMarker },
+  { path: '', pathMatch: 'full', component: HomePage },
+  { path: 'reservar/:id', component: CheckoutPage },
+  { path: 'reservas', component: MyReservations },
+  { path: 'historial', redirectTo: 'reservas' },
   { path: 'actividades', component: ActivityResults },
   { path: 'actividades/:id', component: AttractionDetail },
   { path: 'atracciones/:id', component: AttractionDetail },

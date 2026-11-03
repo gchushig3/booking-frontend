@@ -139,7 +139,7 @@ describe('Observability route authorization', () => {
   afterEach(() => { TestBed.resetTestingModule(); localStorage.clear(); });
   for (const role of ['CLIENTE', 'ADMIN'] as const) it(`${role} receives the appropriate route access`, async () => {
     const auth = TestBed.inject(AuthService); auth.authenticated.set(true);
-    localStorage.setItem('access_token', 'h.' + btoa(JSON.stringify({ role })) + '.s');
+    localStorage.setItem('access_token', 'h.' + btoa(JSON.stringify({ roles: [role] })) + '.s');
     const harness = await RouterTestingHarness.create(); await harness.navigateByUrl('/admin/observabilidad'); harness.detectChanges();
     const router = TestBed.inject(Router);
     expect(router.url).toContain(role === 'ADMIN' ? '/admin/observabilidad' : '/acceso-denegado');

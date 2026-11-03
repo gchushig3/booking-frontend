@@ -3,6 +3,7 @@ import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideRouter } from '@angular/router';
 import { authInterceptor } from './interceptors/auth.interceptor';
 import { routes } from './app.routes';
+import { TELEMETRY_ENABLED } from './core/api.config';
 import { GlobalErrorHandler } from './core/global-error-handler';
 import { observabilityInterceptor } from './interceptors/observability.interceptor';
 
@@ -11,6 +12,7 @@ export const appConfig: ApplicationConfig = {
     provideBrowserGlobalErrorListeners(),
     { provide: ErrorHandler, useClass: GlobalErrorHandler },
     provideHttpClient(withInterceptors([authInterceptor, observabilityInterceptor])),
+    { provide: TELEMETRY_ENABLED, useValue: false },
     provideRouter(routes)
   ]
 };

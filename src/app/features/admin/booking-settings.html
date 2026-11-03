@@ -1,35 +1,51 @@
-<section class="my-6 overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm" aria-label="Experiencias y disponibilidad">
+<section class="my-6 overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm" aria-label="Perfil de integración con Booking">
   <header class="border-b border-stone-200 bg-stone-50 p-6">
-    <p class="text-xs font-bold uppercase tracking-widest text-teal-700">Prepara las reservas</p><h3 class="mt-2 text-2xl font-bold">{{ attraction().name }}</h3><p class="mt-2 text-sm text-slate-600">La ficha ya está guardada. Agrega lo que el visitante podrá reservar y configura los cupos de cada turno.</p>
-    <div class="mt-4 flex flex-wrap gap-2 text-sm"><span class="rounded-full bg-teal-100 px-3 py-1 text-teal-900">✓ Ficha guardada</span><span class="rounded-full bg-white px-3 py-1 text-slate-700">{{ packagesLoading() ? 'Consultando experiencias...' : packages().length + ' experiencias' }}</span>@if (checkedSpots() !== null) { <span class="rounded-full bg-white px-3 py-1 text-slate-700">{{ checkedSpots() }} cupos en el turno consultado</span> }</div>
+    <p class="text-xs font-bold uppercase tracking-widest text-teal-700">Proyección de Booking</p>
+    <h3 class="mt-2 text-2xl font-bold">{{ attraction().name }}</h3>
+    <p class="mt-2 max-w-3xl text-sm leading-6 text-slate-600">Configura ciudad, tarifas por grupo de edad, inclusiones, itinerario, accesibilidad y horarios de referencia. La consulta de cupos y reservas se integra con Inventory; esta pantalla no crea paquetes ni turnos de aforo.</p>
   </header>
-  <div class="p-6">
-    <nav aria-label="Configuración de reservas" class="mb-5 grid gap-3 sm:grid-cols-2"><button type="button" (click)="tab.set('experiences')" [disabled]="busy()" [attr.aria-current]="tab() === 'experiences' ? 'page' : null" [class.bg-teal-50]="tab() === 'experiences'" [class.border-teal-700]="tab() === 'experiences'" class="rounded-xl border p-4 text-left"><span class="block font-bold">1. Experiencias y precios</span><span class="text-sm text-slate-600">Define qué se reserva y cuánto cuesta.</span></button><button type="button" (click)="tab.set('slots')" [disabled]="busy()" [attr.aria-current]="tab() === 'slots' ? 'page' : null" [class.bg-teal-50]="tab() === 'slots'" [class.border-teal-700]="tab() === 'slots'" class="rounded-xl border p-4 text-left"><span class="block font-bold">2. Fechas y cupos</span><span class="text-sm text-slate-600">Abre un horario para recibir visitantes.</span></button></nav>
-    @if (error()) { <div role="alert" class="mb-4 rounded-xl bg-red-50 p-4 text-red-800">{{ error() }} @if (!busy()) { <button type="button" (click)="error.set(''); loadPackages()" class="ml-2 underline">Actualizar experiencias</button> }</div> }
-    @if (message()) { <p role="status" class="mb-4 rounded-xl bg-teal-50 p-4 text-teal-900">{{ message() }}</p> }
-    @if (tab() === 'experiences') {
-      <div class="grid gap-6 lg:grid-cols-2">
-        <div><h4 class="text-lg font-bold">Experiencias de esta atracción</h4><p class="mt-1 text-sm text-slate-600">Cada experiencia tiene su propio precio y límites de participantes.</p>
-          @if (packagesLoading()) { <p role="status" class="mt-4">Cargando experiencias...</p> } @else {
-            <ul class="mt-4 space-y-3">@for (pkg of packages(); track pkg.id) { <li class="rounded-xl border border-stone-200 p-4"><div class="flex items-start justify-between gap-3"><p class="font-bold">{{ pkg.nombre_paquete }}</p><button type="button" (click)="edit(pkg)" [disabled]="busy()" class="rounded-lg border px-3 py-2 text-sm">Editar experiencia</button></div><p class="mt-2 text-sm text-slate-600">{{ typeLabels[pkg.tipo_experiencia] }}</p><p class="mt-1 font-semibold text-teal-800">{{ pkg.precio_unitario }} USD por participante</p><p class="mt-1 text-sm text-slate-500">Desde {{ pkg.min_participantes }} hasta {{ pkg.max_participantes ?? 'sin límite de' }} participantes</p></li> } @empty { <li class="rounded-xl border border-dashed border-stone-300 bg-stone-50 p-6"><p class="font-semibold">Agrega tu primera experiencia</p><p class="mt-2 text-sm text-slate-600">Por ejemplo: entrada general, recorrido con guía o actividad en grupo. Completa el formulario para empezar.</p></li> }</ul>
-          }
-          @if (packages().length) { <button type="button" (click)="tab.set('slots')" [disabled]="busy()" class="mt-4 rounded-xl border border-teal-700 px-4 py-3 font-semibold text-teal-800">Continuar con fechas y cupos →</button> }
-        </div>
-        <form [formGroup]="experience" (ngSubmit)="saveExperience()" class="rounded-2xl bg-stone-50 p-5">
-          <h4 class="text-lg font-bold">{{ packageId() ? 'Editar experiencia' : 'Nueva experiencia' }}</h4><fieldset [disabled]="busy()" class="mt-4 grid gap-4 sm:grid-cols-2">
-            <label class="sm:col-span-2"><span class="mb-1 block text-sm font-semibold">Nombre de la experiencia *</span><input formControlName="nombre_paquete" placeholder="Ej. Recorrido con guía local" class="w-full rounded-xl border border-stone-300 bg-white p-3"></label>
-            <label class="sm:col-span-2"><span class="mb-1 block text-sm font-semibold">Tipo de experiencia</span><select formControlName="tipo_experiencia" class="w-full rounded-xl border border-stone-300 bg-white p-3">@for (type of types; track type) { <option [value]="type">{{ typeLabels[type] }}</option> }</select></label>
-            <label class="sm:col-span-2"><span class="mb-1 block text-sm font-semibold">Precio por participante (USD) *</span><input type="number" min="0" step="0.01" formControlName="precio_unitario" class="w-full rounded-xl border border-stone-300 bg-white p-3"><span class="text-xs text-slate-500">Este es el precio utilizado al reservar. Cero permite una experiencia gratuita.</span></label>
-            <label><span class="mb-1 block text-sm font-semibold">Mínimo de participantes</span><input type="number" min="1" step="1" formControlName="min_participantes" class="w-full rounded-xl border border-stone-300 bg-white p-3"></label>
-            <label><span class="mb-1 block text-sm font-semibold">Máximo de participantes</span><input type="number" min="1" step="1" placeholder="Sin límite" formControlName="max_participantes" class="w-full rounded-xl border border-stone-300 bg-white p-3"><span class="text-xs text-slate-500">Deja vacío para no establecer un máximo.</span></label>
-          </fieldset><div class="mt-5 flex flex-wrap gap-3"><button type="submit" [disabled]="busy() || packagesLoading()" class="rounded-xl bg-teal-700 px-5 py-3 font-semibold text-white disabled:opacity-50">{{ busy() ? 'Guardando...' : 'Guardar experiencia' }}</button>@if (packageId()) { <button type="button" (click)="edit()" [disabled]="busy()" class="rounded-xl border px-4 py-3">Cancelar edición</button> }</div>
-        </form>
-      </div>
-    } @else {
-      <div class="grid gap-6 lg:grid-cols-2">
-        <form [formGroup]="slot" (ngSubmit)="saveSlot()" class="rounded-2xl bg-stone-50 p-5"><h4 class="text-lg font-bold">Configurar un turno</h4><p class="mt-2 text-sm text-slate-600">Elige una fecha, la hora de inicio y la capacidad total. Puedes volver a guardar el mismo turno para cambiar su capacidad.</p><fieldset [disabled]="busy()" class="mt-5 grid gap-4 sm:grid-cols-2"><label><span class="mb-1 block text-sm font-semibold">Fecha *</span><input type="date" formControlName="date" class="w-full rounded-xl border border-stone-300 bg-white p-3"></label><label><span class="mb-1 block text-sm font-semibold">Hora de inicio *</span><input type="time" formControlName="time" class="w-full rounded-xl border border-stone-300 bg-white p-3"></label><label class="sm:col-span-2"><span class="mb-1 block text-sm font-semibold">Capacidad total del turno *</span><input type="number" min="0" step="1" formControlName="capacidad_total" class="w-full rounded-xl border border-stone-300 bg-white p-3"><span class="text-xs text-slate-500">Incluye a los visitantes que ya reservaron. Usa cero para cerrar un turno sin reservas.</span></label></fieldset><div class="mt-5 flex flex-wrap gap-3"><button type="submit" [disabled]="busy()" class="rounded-xl bg-teal-700 px-5 py-3 font-semibold text-white disabled:opacity-50">{{ busy() ? 'Procesando...' : 'Guardar turno' }}</button><button type="button" (click)="checkSlot()" [disabled]="busy() || !slot.controls.date.value || !slot.controls.time.value" class="rounded-xl border px-4 py-3 disabled:opacity-50">Consultar cupos</button></div></form>
-        <aside class="rounded-2xl border border-stone-200 p-5"><h4 class="text-lg font-bold">Comprueba la disponibilidad</h4><p class="mt-2 text-sm text-slate-600">Guarda el turno o consulta una fecha y una hora para conocer los cupos disponibles.</p>@if (availability()) { <p role="status" class="mt-4 rounded-xl bg-teal-50 p-4 font-semibold text-teal-900">{{ availability() }}</p> }<ul class="mt-5 space-y-3 text-sm text-slate-600"><li>Los cupos del turno se comparten entre las experiencias de esta atracción.</li><li>La capacidad no puede ser menor que los cupos ya reservados.</li><li>Una experiencia y un turno con cupos permiten recibir reservas.</li></ul>@if (!packagesLoading() && !packages().length) { <div class="mt-5 rounded-xl bg-amber-100 p-4 text-sm text-amber-800">Todavía falta una experiencia para que los visitantes puedan reservar.<button type="button" (click)="tab.set('experiences')" class="mt-2 block font-semibold underline">Agregar experiencia</button></div> }</aside>
-      </div>
+  <form [formGroup]="form" (ngSubmit)="save()" class="space-y-7 p-6">
+    @if (loading()) { <p role="status" class="text-sm text-slate-600">Cargando el detalle público para precargar el perfil...</p> }
+    @if (error()) { <p role="alert" class="rounded-xl bg-red-50 p-4 text-red-800">{{ error() }}</p> }
+    @if (message()) { <p role="status" class="rounded-xl bg-teal-50 p-4 text-teal-900">{{ message() }}</p> }
+    @if (!allowProfileSave() && !loading()) {
+      <p role="status" class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+        El detalle del backend no incluye schedule_times para atracciones publicadas. Se bloqueó el guardado para evitar borrar esos horarios del perfil; completa la lectura del perfil en la API antes de editarlo.
+      </p>
     }
-  </div>
+    <fieldset [disabled]="busy() || loading()" class="grid gap-5 md:grid-cols-2">
+      <legend class="mb-3 text-lg font-bold">Ubicación y tarifas</legend>
+      <label><span class="mb-1 block text-sm font-semibold">Ciudad *</span><input formControlName="city" maxlength="120" class="w-full rounded-xl border border-stone-300 p-3"></label>
+      <label><span class="mb-1 block text-sm font-semibold">Moneda ISO 4217 *</span><input formControlName="currency" maxlength="3" placeholder="USD" class="w-full rounded-xl border border-stone-300 p-3"></label>
+      <label><span class="mb-1 block text-sm font-semibold">Adulto *</span><input type="number" min="0" step="0.01" formControlName="adult" class="w-full rounded-xl border border-stone-300 p-3"></label>
+      <label><span class="mb-1 block text-sm font-semibold">Niño *</span><input type="number" min="0" step="0.01" formControlName="child" class="w-full rounded-xl border border-stone-300 p-3"></label>
+      <label><span class="mb-1 block text-sm font-semibold">Adulto mayor *</span><input type="number" min="0" step="0.01" formControlName="senior" class="w-full rounded-xl border border-stone-300 p-3"></label>
+      <label><span class="mb-1 block text-sm font-semibold">Infante *</span><input type="number" min="0" step="0.01" formControlName="infant" class="w-full rounded-xl border border-stone-300 p-3"></label>
+      <label><span class="mb-1 block text-sm font-semibold">Estudiante (opcional)</span><input type="number" min="0" step="0.01" formControlName="student" class="w-full rounded-xl border border-stone-300 p-3"></label>
+    </fieldset>
+
+    <fieldset [disabled]="busy() || loading()" class="grid gap-3 sm:grid-cols-2">
+      <legend class="mb-3 text-lg font-bold">Inclusiones y accesibilidad</legend>
+      <label class="flex items-center gap-3 rounded-xl bg-stone-50 p-4"><input type="checkbox" formControlName="includes_food"><span>Incluye alimentación</span></label>
+      <label class="flex items-center gap-3 rounded-xl bg-stone-50 p-4"><input type="checkbox" formControlName="includes_transport"><span>Incluye transporte</span></label>
+      <label class="flex items-center gap-3 rounded-xl bg-stone-50 p-4"><input type="checkbox" formControlName="includes_guide"><span>Incluye guía</span></label>
+      <label class="flex items-center gap-3 rounded-xl bg-stone-50 p-4"><input type="checkbox" formControlName="wheelchair_accessible"><span>Accesible en silla de ruedas</span></label>
+      <label class="flex items-center gap-3 rounded-xl bg-stone-50 p-4"><input type="checkbox" formControlName="service_animals_allowed"><span>Admite animales de asistencia</span></label>
+      <label class="flex items-center gap-3 rounded-xl bg-stone-50 p-4"><input type="checkbox" formControlName="permite_paquete"><span>Permite paquetes turísticos</span></label>
+    </fieldset>
+
+    <fieldset [disabled]="busy() || loading()" class="grid gap-5 md:grid-cols-2">
+      <legend class="mb-3 text-lg font-bold">Horarios y contenido de la experiencia</legend>
+      <label><span class="mb-1 block text-sm font-semibold">Horarios de referencia (HH:MM, uno por línea)</span><textarea formControlName="schedule_times" rows="5" placeholder="09:00&#10;13:30" class="w-full rounded-xl border border-stone-300 p-3"></textarea><span class="text-xs text-slate-500">El horario se valida contra el aforo publicado por Inventory durante la búsqueda por fecha.</span></label>
+      <label><span class="mb-1 block text-sm font-semibold">Itinerario JSON *</span><textarea formControlName="itinerary_json" rows="9" spellcheck="false" class="w-full rounded-xl border border-stone-300 p-3 font-mono text-xs"></textarea><span class="text-xs text-slate-500">Lista de paradas: stop_number, time, title y duration_minutes.</span></label>
+      <label class="md:col-span-2"><span class="mb-1 block text-sm font-semibold">Desglose de calificaciones JSON *</span><textarea formControlName="ratings_json" rows="4" spellcheck="false" class="w-full rounded-xl border border-stone-300 p-3 font-mono text-xs"></textarea><span class="text-xs text-slate-500">Objeto con métricas y valores numéricos entre 0 y 10.</span></label>
+    </fieldset>
+    <div class="flex flex-wrap gap-3">
+      <button type="submit" [disabled]="busy() || loading() || !allowProfileSave()" class="rounded-xl bg-teal-700 px-5 py-3 font-semibold text-white disabled:opacity-50">{{ busy() ? 'Guardando...' : 'Guardar perfil Booking' }}</button>
+      @if (!isPublished()) {
+        <button type="button" (click)="publish()" [disabled]="busy() || !profileSaved()" class="rounded-xl border border-teal-700 px-5 py-3 font-semibold text-teal-800 disabled:opacity-50">Publicar atracción</button>
+        @if (!profileSaved()) { <p class="self-center text-xs text-slate-500">Guarda el perfil antes de publicar.</p> }
+      }
+    </div>
+  </form>
 </section>

@@ -54,7 +54,7 @@ export class ReservationDetail {
   reset() { this.writing.set(false); this.commentError.set(''); this.success.set(''); this.form.reset({ puntuacion: 5, comentario: '' }); }
   close() { if (!this.submitting()) { this.reset(); this.closed.emit(); } }
   private message(error: unknown): string {
-    if (error instanceof HttpErrorResponse && error.status === 401) { this.auth.logout(); this.authRequired.emit(); }
+    if (error instanceof HttpErrorResponse && error.status === 401) { this.auth.logoutLocally(); this.authRequired.emit(); }
     return httpErrorMessage(error);
   }
   submit() {
